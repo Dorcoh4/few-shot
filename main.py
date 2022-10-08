@@ -29,20 +29,35 @@ with torch.no_grad():
     losses = []
 
     dataloader = accelerator.prepare(dataloader)
+    model = model.to(accelerator.device)
     for batch in dataloader:
-        # batch_encoding = tokenizer(batch['text'], return_tensors="pt")
         outputs = model(input_ids=batch['input_ids'], labels=batch['input_ids'])
-        all_loss = accelerator.gather_for_metrics((outputs.loss,))
+        all_loss = accelerator.gather_for_metrics((outputs.loss.unsqueeze(0),))
         for loss in all_loss:
             losses.append(loss)
-    loss = torch.mean(torch.cat(losses))
-    try:
-        perplexity = torch.exp(loss)
-    except OverflowError:
-        perplexity = float("inf")
+    res = torch.cat(losses)
+    res = res.type(torch.FloatTensor)
+    # try:
+    #     perplexity = torch.exp(loss)
+    # except OverflowError:
+    #     perplexity = float("inf")
 
-    print(perplexity.item())
-
+    print(f"quantile 0.01  {torch.quantile(res,0.01)}")
+    print(f"quantile 0.05  {torch.quantile(res, 0.05)}")
+    print(f"quantile 0.1  {torch.quantile(res, 0.1)}")
+    print(f"quantile 0.15  {torch.quantile(res, 0.15)}")
+    print(f"quantile 0.2  {torch.quantile(res, 0.2)}")
+    print(f"quantile 0.25  {torch.quantile(res, 0.25)}")
+    print(f"quantile 0.3  {torch.quantile(res, 0.3)}")
+    print(f"quantile 0.5  {torch.quantile(res, 0.4)}")
+    print(f"quantile 0.6  {torch.quantile(res, 0.6)}")
+    print(f"quantile 0.7  {torch.quantile(res, 0.7)}")
+    print(f"quantile 0.75  {torch.quantile(res, 0.75)}")
+    print(f"quantile 0.8  {torch.quantile(res, 0.8)}")
+    print(f"quantile 0.85  {torch.quantile(res, 0.85)}")
+    print(f"quantile 0.9  {torch.quantile(res, 0.9)}")
+    print(f"quantile 0.95  {torch.quantile(res, 0.95)}")
+    print(f"quantile 0.99  {torch.quantile(res, 0.99)}")
 
 
 
