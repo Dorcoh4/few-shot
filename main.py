@@ -29,9 +29,9 @@ with torch.no_grad():
     losses = []
     for batch in dataloader:
         # batch_encoding = tokenizer(batch['text'], return_tensors="pt")
-        outputs = model(input_ids=batch['input_ids'], labels=batch['input_ids'])
+        outputs = model(input_ids=batch['input_ids'].cuda(), labels=batch['input_ids'].cuda())
 
-        losses.append(outputs.loss.unsqueeze(0))
+        losses.append(outputs.loss)
         x = 3
     loss = torch.mean(torch.cat(losses))
     try:
