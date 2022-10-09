@@ -12,9 +12,9 @@ import torch
 
 print(f"device count: {torch.cuda.device_count()}")
 
-model_name = "facebook/opt-1.3b"
+model_name = "facebook/opt-2.7b"
 
-def tokenize_data(dataste, tokenizer):
+def tokenize_data(dataset, tokenizer):
 
     # the fast tokenizer currently does not work correctly
     # tokenizer.padding_side = "left"
@@ -33,11 +33,13 @@ def tokenize_data(dataste, tokenizer):
 
 def print_quantiles(model, dataloader, accelerator):
     losses = []
-    dataloader, model = accelerator.prepare(dataloader, model)
-    # model = model.to(accelerator.device)
+    dataloader = accelerator.prepare(dataloader)
+    model = model.to(accelerator.device)
     progress_bar = tqdm(range(len(dataloader)))
+    print("Going over data.........")
     for batch in dataloader:
-        outputs = model(input_ids=batch['input_ids'], labels=batch['input_ids'])
+        input_ids = batch['input_ids']
+        outputs = model(input_ids=input_ids, labels=input_ids)
         all_loss = accelerator.gather_for_metrics((outputs.loss.unsqueeze(0),))
         print(len(all_loss))
         for loss in all_loss:
@@ -67,7 +69,8 @@ def print_quantiles(model, dataloader, accelerator):
     print(f"quantile 0.95  {torch.quantile(res, 0.95)}")
     print(f"quantile 0.99  {torch.quantile(res, 0.99)}")
 
-def main():
+def main1():
+    print("starting")
     with torch.no_grad():
         accelerator = Accelerator()
         model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16)
@@ -81,7 +84,8 @@ def main():
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    print("startinger")
+    sys.exit(main1())
 
 
 
