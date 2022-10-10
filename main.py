@@ -12,7 +12,7 @@ import torch
 
 print(f"device count: {torch.cuda.device_count()}")
 
-model_name = "facebook/opt-1.3b"
+model_name = "facebook/opt-2.7b"
 
 def tokenize_data(dataset, tokenizer):
 
