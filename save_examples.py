@@ -77,7 +77,7 @@ def main1():
         dataset = datasets.load_dataset("bookcorpus")['train'].shuffle(seed=1034).select(range(50000))
         tokenized_data = main.tokenize_data(dataset, tokenizer)
         dataloader = DataLoader(tokenized_data, shuffle=False, batch_size=1)
-        save_examples(model, dataloader, accelerator, tokenizer, 7.75, 3.99)
+        save_examples(model, dataloader, accelerator, tokenizer, 8.7, 3.69)
 
 
 if __name__ == '__main__':

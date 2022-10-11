@@ -57,7 +57,6 @@ def print_quantiles(model, dataloader, accelerator):
     accelerator.print(f"quantile 0.05  {torch.quantile(res, 0.05)}")
     accelerator.print(f"quantile 0.1  {torch.quantile(res, 0.1)}")
     accelerator.print(f"quantile 0.15  {torch.quantile(res, 0.15)}")
-    accelerator.print(f"quantile 0.05  {torch.quantile(res, 0.05)}")
     accelerator.print(f"quantile 0.2  {torch.quantile(res, 0.2)}")
     accelerator.print(f"quantile 0.25  {torch.quantile(res, 0.25)}")
     accelerator.print(f"quantile 0.3  {torch.quantile(res, 0.3)}")
