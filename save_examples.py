@@ -65,8 +65,8 @@ def save_examples(model, dataloader, accelerator, tokenizer, high_bound, low_bou
     accelerator.print(highs)
     accelerator.print(lows)
     # if accelerator.is_main_process:
-    torch.save(highs, f"all_low_{str(uuid.uuid4())}.pt")
-    torch.save(lows, f"all_high_{str(uuid.uuid4())}.pt")
+    torch.save(highs, f"{main.output_dir}/all_low_{str(uuid.uuid4())}.pt")
+    torch.save(lows, f"{main.output_dir}/all_high_{str(uuid.uuid4())}.pt")
 
 def main1():
     with torch.no_grad():

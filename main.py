@@ -13,6 +13,7 @@ import torch
 print(f"device count: {torch.cuda.device_count()}")
 
 model_name = "facebook/opt-2.7b"
+output_dir = "."
 
 def tokenize_data(dataset, tokenizer):
 
@@ -71,6 +72,23 @@ def print_quantiles(model, dataloader, accelerator):
     accelerator.print(f"quantile 0.95  {torch.quantile(res, 0.95)}")
     accelerator.print(f"quantile 0.99  {torch.quantile(res, 0.99)}")
     accelerator.print(f"length {res.size()}")
+
+def get_args():
+    parser = argparse.ArgumentParser(description=""" FORDOR
+
+            """, formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument('--output_dir', dest='output_dir', required=True,
+                        help='Where shall we write intermediate models + final data to?')
+    parser.add_argument('--model_name', dest='model_name', required=True,
+                        help='FORDOR')
+    args = parser.parse_args()
+    global model_name
+    global output_dir
+    model_name = args.model_name
+    output_dir = args.output_dir
+
+    return args
+
 def main1():
     print("starting")
     with torch.no_grad():

@@ -37,9 +37,9 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
     # accelerator.print(f"all_high {len(all_highs)} : {all_highs[0]}")
     # accelerator.print(f"all_high {len(all_lows)} : {all_lows[0]}")
     def craft_prompt(example):
-        low_str = "low."
-        high_str = "high."
-        prompt_q = "is the probability of the following sentence high or low?\n"
+        no_str = "no."
+        yes_str = "yes."
+        prompt_q = "is the following sentence short?\n"
         used_examples = [example]
         high_ex = example
         while high_ex in used_examples:
@@ -66,8 +66,8 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
             low_ex3 = random.choice(all_lows)
         used_examples.append(low_ex3)
 
-        return f"{prompt_q}{high_ex}\n{low_str}\n{prompt_q}{low_ex}\n{high_str}\n{prompt_q}{high_ex2}\n{low_str}\n" \
-               f"{prompt_q}{low_ex2}\n{high_str}\n{prompt_q}{high_ex3}\n{low_str}\n{prompt_q}{low_ex3}\n{high_str}\n{prompt_q}{example}\n"
+        return f"{prompt_q}{high_ex}\n{no_str}\n{prompt_q}{low_ex}\n{yes_str}\n{prompt_q}{high_ex2}\n{no_str}\n" \
+               f"{prompt_q}{low_ex2}\n{yes_str}\n{prompt_q}{high_ex3}\n{no_str}\n{prompt_q}{low_ex3}\n{yes_str}\n{prompt_q}{example}\n"
     win_cnt = 0
     tot_cnt = 0
     unk_cnt = 0
@@ -82,10 +82,10 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
         target = None
         if outputs.loss.item() > high_bound:
             curr_example = tokenizer.batch_decode(input_ids)[0].lstrip("</s>")
-            target = "low."
+            target = "no."
         elif outputs.loss.item() < low_bound:
             curr_example = tokenizer.batch_decode(input_ids)[0].lstrip("</s>")
-            target = "high."
+            target = "yes."
         if curr_example is not None:
             prompt = craft_prompt(curr_example)
             prompt_tokens = tokenizer(prompt, return_tensors="pt").input_ids.to(accelerator.device)
@@ -94,7 +94,7 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
             generated_text = tokenizer.batch_decode(generated_ids[:,prompt_tokens.size()[1]:], skip_special_tokens=True)[0]
             if target in generated_text:
                 win_cnt += 1
-            elif  not ("low" in generated_text  or "high" in  generated_text):
+            elif  not ("no" in generated_text  or "yes" in  generated_text):
                 unk_cnt += 1
                 print(f"unknown : {tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]}")
             tot_cnt += 1
