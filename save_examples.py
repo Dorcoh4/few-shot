@@ -7,20 +7,21 @@ from torch.utils.data import DataLoader
 from accelerate import Accelerator
 from tqdm import tqdm
 
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
 import torch
 
 model_name = main.model_name
 
 
 def save_examples(model, dataloader, accelerator, tokenizer, high_bound, low_bound):
-    dataloader= accelerator.prepare(dataloader)
-    model = model.to(accelerator.device)
+    # dataloader= accelerator.prepare(dataloader)
+    # model = model.to(accelerator.device)
+    model.parallelize()
     highs = []
     lows = []
     progress_bar = tqdm(range(len(dataloader)))
     for batch in dataloader:
-        input_ids = batch['input_ids']
+        input_ids = batch['input_ids'].cuda()
         outputs = model(input_ids=input_ids, labels=input_ids)
         # curr_low = None
         # curr_high = None
@@ -29,9 +30,9 @@ def save_examples(model, dataloader, accelerator, tokenizer, high_bound, low_bou
             # all_highs = accelerator.gather_for_metrics((input_ids,))
             # accelerator.print("high", tokenizer.batch_decode(batch['input_ids']))
             # for high in all_highs:
-            highs.append(tokenizer.batch_decode(input_ids)[0].lstrip("</s>"))
+            highs.append(tokenizer.batch_decode(input_ids, skip_special_tokens=True)[0])
         elif outputs.loss.item() < low_bound:
-            lows.append(tokenizer.batch_decode(input_ids)[0].lstrip("</s>"))
+            lows.append(tokenizer.batch_decode(input_ids, skip_special_tokens=True)[0])
         #     curr_low = input_ids
             # accelerator.print("low", tokenizer.batch_decode(batch['input_ids']))
             # all_lows = accelerator.gather_for_metrics((input_ids,))
@@ -62,22 +63,25 @@ def save_examples(model, dataloader, accelerator, tokenizer, high_bound, low_bou
     # all_highs = accelerator.gather_for_metrics((highs,))
     # print(lows)
     # print(highs)
-    accelerator.print(highs)
-    accelerator.print(lows)
+    print(highs)
+    print(lows)
     # if accelerator.is_main_process:
     torch.save(highs, f"{main.output_dir}/all_low_{str(uuid.uuid4())}.pt")
     torch.save(lows, f"{main.output_dir}/all_high_{str(uuid.uuid4())}.pt")
 
 def main1():
+    args = main.get_args()
     with torch.no_grad():
-        accelerator = Accelerator()
-        model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16)
-        tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
+        accelerator = None
+        model = AutoModelForSeq2SeqLM.from_pretrained(main.model_name)
+        tokenizer = AutoTokenizer.from_pretrained(main.model_name)
         model.eval()
-        dataset = datasets.load_dataset("bookcorpus")['train'].shuffle(seed=1034).select(range(50000))
+        dataset = main.get_data()
         tokenized_data = main.tokenize_data(dataset, tokenizer)
         dataloader = DataLoader(tokenized_data, shuffle=False, batch_size=1)
-        save_examples(model, dataloader, accelerator, tokenizer, 8.7, 3.69)
+        q5 = torch.load(f"{main.output_dir}/quantile-0.05.pt")
+        q95 = torch.load(f"{main.output_dir}/quantile-0.95.pt")
+        save_examples(model, dataloader, accelerator, tokenizer, q95, q5)
 
 
 if __name__ == '__main__':
