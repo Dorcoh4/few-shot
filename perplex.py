@@ -16,6 +16,9 @@ import torch
 
 model_name = main.model_name
 
+high_pp_target = "no."
+low_pp_target = "yes."
+prompt_q = "Is this sentence a common sentence?"
 
 def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bound, all_lows, all_highs):
     # dataloader, tokenizer = accelerator.prepare(dataloader, tokenizer)
@@ -37,37 +40,48 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
     # accelerator.print(f"all_high {len(all_highs)} : {all_highs[0]}")
     # accelerator.print(f"all_high {len(all_lows)} : {all_lows[0]}")
     def craft_prompt(example):
-        no_str = "no."
-        yes_str = "yes."
-        prompt_q = "Is this sentence common?\n"
-        used_examples = [example] #FORDOR something is wrong with this collision prevention
-        high_ex = example
-        while high_ex in used_examples:
-            high_ex = random.choice(all_highs)
-        used_examples.append(high_ex)
-        high_ex2 = high_ex
-        while high_ex2 in used_examples:
-            high_ex2 = random.choice(all_highs)
-        used_examples.append(high_ex2)
-        high_ex3 = high_ex
-        while high_ex3 in used_examples:
-            high_ex3 = random.choice(all_highs)
-        used_examples.append(high_ex3)
-        low_ex = example
-        while low_ex in used_examples:
-            low_ex = random.choice(all_lows)
-        used_examples.append(low_ex)
-        low_ex2 = example
-        while low_ex2 in used_examples:
-            low_ex2 = random.choice(all_lows)
-        used_examples.append(low_ex2)
-        low_ex3 = example
-        while low_ex3 in used_examples:
-            low_ex3 = random.choice(all_lows)
-        used_examples.append(low_ex3)
 
-        return f"{prompt_q}{high_ex}\n{no_str}\n{prompt_q}{low_ex}\n{yes_str}\n{prompt_q}{high_ex2}\n{no_str}\n" \
-               f"{prompt_q}{low_ex2}\n{yes_str}\n{prompt_q}{high_ex3}\n{no_str}\n{prompt_q}{low_ex3}\n{yes_str}\n{prompt_q}{example}\n"
+        # no_str = "yes."
+        # yes_str = "no."
+        # prompt_q = "Does this sentence perplex you?"
+        used_examples = [example]
+        few_shot = ""
+        for i in range(main.shot):
+            if i%2 == 0:
+                example_list = all_highs
+                curr_target = high_pp_target
+            else:
+                example_list = all_lows
+                curr_target = low_pp_target
+            new_ex = example
+            while new_ex in used_examples:
+                new_ex = random.choice(example_list)
+            used_examples.append(new_ex)
+            few_shot += f"{prompt_q}\n{new_ex}\n{curr_target}\n###\n"
+        # high_ex2 = high_ex
+        # while high_ex2 in used_examples:
+        #     high_ex2 = random.choice(all_highs)
+        # used_examples.append(high_ex2)
+        # high_ex3 = high_ex
+        # while high_ex3 in used_examples:
+        #     high_ex3 = random.choice(all_highs)
+        # used_examples.append(high_ex3)
+        # low_ex = example
+        # while low_ex in used_examples:
+        #     low_ex = random.choice(all_lows)
+        # used_examples.append(low_ex)
+        # low_ex2 = example
+        # while low_ex2 in used_examples:
+        #     low_ex2 = random.choice(all_lows)
+        # used_examples.append(low_ex2)
+        # low_ex3 = example
+        # while low_ex3 in used_examples:
+        #     low_ex3 = random.choice(all_lows)
+        # used_examples.append(low_ex3)
+
+        # return f"{prompt_q} {high_ex} {no_str} {prompt_q} {low_ex} {yes_str} {prompt_q} {high_ex2} {no_str} " \
+        #        f"{prompt_q} {low_ex2} {yes_str} {prompt_q} {high_ex3} {no_str} {prompt_q} {low_ex3} {yes_str} {prompt_q} {example} "
+        return f"{few_shot}{prompt_q}\n{example}\n"
     win_cnt = 0
     tot_cnt = 0
     unk_cnt = 0
@@ -80,12 +94,13 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
         # curr_high = None
         curr_example = None
         target = None
-        if outputs.loss.item() > high_bound:
-            curr_example = tokenizer.batch_decode(input_ids, skip_special_tokens=True)[0]
-            target = "no"
-        elif outputs.loss.item() < low_bound:
-            curr_example = tokenizer.batch_decode(input_ids, skip_special_tokens=True)[0]
-            target = "yes"
+        curr_example = tokenizer.batch_decode(input_ids, skip_special_tokens=True)[0]
+        # if outputs.loss.item() > (high_bound + low_bound)/2:
+
+        target = high_pp_target if outputs.loss.item() > (high_bound + low_bound)/2.0 else low_pp_target
+        # elif outputs.loss.item() < low_bound:
+        #     # curr_example = tokenizer.batch_decode(input_ids, skip_special_tokens=True)[0]
+
         if curr_example is not None:
             prompt = craft_prompt(curr_example)
             prompt_tokens = tokenizer(prompt, return_tensors="pt").input_ids.cuda()
@@ -96,7 +111,7 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
             lower_text = generated_text.lower()
             if lower_text == target or (lower_text.startswith(target) and not lower_text[len(target)].isalnum()): #FORDOR
                 win_cnt += 1
-            elif not ("no" in lower_text or "yes" in lower_text):
+            elif not (high_pp_target in lower_text or low_pp_target in lower_text):
                 unk_cnt += 1
                 print(f"unknown : {tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]}")
             else:
@@ -107,7 +122,7 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
             # print(f"FORDOR actual result::: {generated_text} -expected- ({target})")
         batch_cnt +=1
         progress_bar.update(1)
-        if batch_cnt % 1000 == 0 and tot_cnt > 0:
+        if batch_cnt % 100 == 0 and tot_cnt > 0:
             print(f"tot : {tot_cnt}, wins : {win_cnt}, unks: {unk_cnt}")
             print(f"win% = {float(win_cnt) / tot_cnt}, unk% = {float(unk_cnt) / tot_cnt}")
     print("FINALLY:")
@@ -139,6 +154,15 @@ def main1():
     with torch.no_grad():
         accelerator = None
         args = main.get_args()
+        global prompt_q
+        global high_pp_target
+        global low_pp_target
+        if args.prompt_q is not None:
+            prompt_q = args.prompt_q
+        if args.high_pp_target is not None:
+            high_pp_target = args.high_pp_target
+        if args.low_pp_target is not None:
+            low_pp_target = args.low_pp_target
         model = AutoModelForSeq2SeqLM.from_pretrained(main.model_name)
         tokenizer = AutoTokenizer.from_pretrained(main.model_name)
         model.eval()

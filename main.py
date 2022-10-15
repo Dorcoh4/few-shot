@@ -14,7 +14,7 @@ print(f"device count: {torch.cuda.device_count()}")
 
 model_name = "bigscience/T0_3B"
 output_dir = "."
-
+shot = 0
 def tokenize_data(dataset, tokenizer):
 
     # the fast tokenizer currently does not work correctly
@@ -78,7 +78,7 @@ def print_quantiles(model, dataloader, accelerator):
     # accelerator.print(f"length {res.size()}")
 
 def get_data():
-    dataset = datasets.load_dataset("bookcorpus", split="train[:10%]").shuffle(seed=1034).select(range(100))
+    dataset = datasets.load_dataset("bookcorpus", split="train[:10%]").shuffle(seed=1034).select(range(12000))
     return dataset
 
 def get_args():
@@ -89,9 +89,19 @@ def get_args():
                         help='Where shall we write intermediate models + final data to?')
     parser.add_argument('--model_name', dest='model_name', required=True,
                         help='FORDOR')
+    parser.add_argument('-o', '--prompt_q', dest='prompt_q',
+                        help="shows output")
+    parser.add_argument('--high_pp_target', dest='high_pp_target',
+                        help="shows output")
+    parser.add_argument('--low_pp_target', dest='low_pp_target',
+                        help="shows output")
+    parser.add_argument('--shot', dest='shot', default=0,
+                        help="shows output")
     args = parser.parse_args()
     global model_name
     global output_dir
+    global shot
+    shot = int(args.shot)
     model_name = args.model_name
     output_dir = args.output_dir
 
