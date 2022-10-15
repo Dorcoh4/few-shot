@@ -62,9 +62,9 @@ def save_examples(model, dataloader, accelerator, tokenizer, high_bound, low_bou
     # all_lows = accelerator.gather_for_metrics((lows,))
     # all_highs = accelerator.gather_for_metrics((highs,))
     # print(lows)
+    print(len(highs))
     # print(highs)
-    # print(highs)
-    # print(lows)
+    print(len(lows))
     # if accelerator.is_main_process:
     torch.save(highs, f"{main.output_dir}/all_low_{str(uuid.uuid4())}.pt")
     torch.save(lows, f"{main.output_dir}/all_high_{str(uuid.uuid4())}.pt")

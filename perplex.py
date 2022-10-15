@@ -144,13 +144,13 @@ def main1():
         model.eval()
         all_lows = []
         all_highs = []
-        for file in os.listdir("."):
+        for file in os.listdir(main.output_dir):
             if file.startswith("all_low_"):
-                curr_lows = torch.load(file)
+                curr_lows = torch.load(f"{main.output_dir}/{file}")
                 for low in curr_lows:
                     all_lows.append(low)
             elif file.startswith("all_high_"):
-                curr_highs = torch.load(file)
+                curr_highs = torch.load(f"{main.output_dir}/{file}")
                 for high in curr_highs:
                     all_highs.append(high)
         all_examples = all_lows + all_highs
@@ -160,7 +160,7 @@ def main1():
         # tokenized_examples = [tokenizer(example) for example in all_examples]
         tokenized_examples = tokenizer(all_examples)
         # print("FORDOR")
-        # print(len(all_examples))
+        print(len(all_examples))
         # print(len(tokenized_examples))
         tokenized_data = MyDataset(tokenized_examples)
         dataloader = DataLoader(tokenized_data, shuffle=True, batch_size=1)
