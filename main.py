@@ -78,7 +78,7 @@ def print_quantiles(model, dataloader, accelerator):
     # accelerator.print(f"length {res.size()}")
 
 def get_data():
-    dataset = datasets.load_dataset("bookcorpus", split="train[:25%]").shuffle(seed=1034).select(range(50000))
+    dataset = datasets.load_dataset("bookcorpus", split="train[:10%]").shuffle(seed=1034).select(range(4000))
     return dataset
 
 def get_args():
@@ -114,7 +114,6 @@ def main1():
 
 
 if __name__ == '__main__':
-    print("startinger")
     sys.exit(main1())
 
 

@@ -63,8 +63,8 @@ def save_examples(model, dataloader, accelerator, tokenizer, high_bound, low_bou
     # all_highs = accelerator.gather_for_metrics((highs,))
     # print(lows)
     # print(highs)
-    print(highs)
-    print(lows)
+    # print(highs)
+    # print(lows)
     # if accelerator.is_main_process:
     torch.save(highs, f"{main.output_dir}/all_low_{str(uuid.uuid4())}.pt")
     torch.save(lows, f"{main.output_dir}/all_high_{str(uuid.uuid4())}.pt")
@@ -81,6 +81,9 @@ def main1():
         dataloader = DataLoader(tokenized_data, shuffle=False, batch_size=1)
         q5 = torch.load(f"{main.output_dir}/quantile-0.05.pt")
         q95 = torch.load(f"{main.output_dir}/quantile-0.95.pt")
+        print("quantiles:")
+        print(q5)
+        print(q95)
         save_examples(model, dataloader, accelerator, tokenizer, q95, q5)
 
 

@@ -22,13 +22,13 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
     # model = model.to(accelerator.device)
     model.parallelize()
 
-    for file in os.listdir("."):
+    for file in os.listdir(main.output_dir):
         if file.startswith("all_low_"):
-            curr_lows = torch.load(file)
+            curr_lows = torch.load(f"{main.output_dir}/{file}")
             for low in curr_lows:
                 all_lows.append(low)
         elif file.startswith("all_high_"):
-            curr_highs = torch.load(file)
+            curr_highs = torch.load(f"{main.output_dir}/{file}")
             for high in curr_highs:
                 all_highs.append(high)
 
@@ -39,8 +39,8 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
     def craft_prompt(example):
         no_str = "no."
         yes_str = "yes."
-        prompt_q = "is the following sentence short?\n"
-        used_examples = [example]
+        prompt_q = "Is this sentence common?\n"
+        used_examples = [example] #FORDOR something is wrong with this collision prevention
         high_ex = example
         while high_ex in used_examples:
             high_ex = random.choice(all_highs)
@@ -93,9 +93,10 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
             generated_ids = model.generate(prompt_tokens, max_new_tokens=3)
             # generated_text = tokenizer.batch_decode(generated_ids[:,prompt_tokens.size()[1]:], skip_special_tokens=True)[0]
             generated_text = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
-            if target in generated_text.lower(): #FORDOR
+            lower_text = generated_text.lower()
+            if lower_text == target or (lower_text.startswith(target) and not lower_text[len(target)].isalnum()): #FORDOR
                 win_cnt += 1
-            elif not ("no" in generated_text.lower() or "yes" in generated_text.lower()):
+            elif not ("no" in lower_text or "yes" in lower_text):
                 unk_cnt += 1
                 print(f"unknown : {tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]}")
             else:
@@ -125,7 +126,7 @@ class MyDataset(torch.utils.data.Dataset):
         return item
 
     def __len__(self):
-        return len(self.texts)
+        return len(self.texts['input_ids'])
 
     def shuffle(self):
         # c = list(zip(self.texts, self.labels))
@@ -156,11 +157,18 @@ def main1():
 
         #dataset.shuffle()
         # dataset = main.get_data()
+        # tokenized_examples = [tokenizer(example) for example in all_examples]
         tokenized_examples = tokenizer(all_examples)
+        # print("FORDOR")
+        # print(len(all_examples))
+        # print(len(tokenized_examples))
         tokenized_data = MyDataset(tokenized_examples)
         dataloader = DataLoader(tokenized_data, shuffle=True, batch_size=1)
         q5 = torch.load(f"{main.output_dir}/quantile-0.05.pt")
         q95 = torch.load(f"{main.output_dir}/quantile-0.95.pt")
+        print("quantiles:")
+        print(q5)
+        print(q95)
         check_perplex(model, dataloader, tokenizer, accelerator, q95, q5, all_lows, all_highs)
 
 
