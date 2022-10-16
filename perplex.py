@@ -16,8 +16,8 @@ import torch
 
 model_name = main.model_name
 
-high_pp_target = "no."
-low_pp_target = "yes."
+high_pp_target = "no"
+low_pp_target = "yes"
 prompt_q = "Is this sentence a common sentence?"
 
 def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bound, all_lows, all_highs):
@@ -57,7 +57,7 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
             while new_ex in used_examples:
                 new_ex = random.choice(example_list)
             used_examples.append(new_ex)
-            few_shot += f"{prompt_q}\n{new_ex}\n{curr_target}\n###\n"
+            few_shot += f"{prompt_q}\n{new_ex}\n{curr_target}.\n###\n"
         # high_ex2 = high_ex
         # while high_ex2 in used_examples:
         #     high_ex2 = random.choice(all_highs)
@@ -89,7 +89,11 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
     progress_bar = tqdm(range(len(dataloader)))
     for batch in dataloader:
         input_ids = batch['input_ids'].cuda()
-        outputs = model(input_ids=input_ids, labels=input_ids)
+        outputs1 = model(input_ids=input_ids, labels=input_ids)
+        outputs2 = model(input_ids=input_ids, labels=input_ids)
+        if outputs1.loss.item() != outputs2.loss.item():
+            print(f"oh its different!!! {outputs1.loss.item()} {outputs2.loss.item()}")
+        outputs = outputs2
         # curr_low = None
         # curr_high = None
         curr_example = None
@@ -194,8 +198,6 @@ def main1():
         print(q5)
         print(q95)
         check_perplex(model, dataloader, tokenizer, accelerator, q95, q5, all_lows, all_highs)
-
-
 
 
 if __name__ == '__main__':

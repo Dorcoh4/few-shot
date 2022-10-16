@@ -15,6 +15,7 @@ print(f"device count: {torch.cuda.device_count()}")
 model_name = "bigscience/T0_3B"
 output_dir = "."
 shot = 0
+num_examples = 12000
 def tokenize_data(dataset, tokenizer):
 
     # the fast tokenizer currently does not work correctly
@@ -78,7 +79,7 @@ def print_quantiles(model, dataloader, accelerator):
     # accelerator.print(f"length {res.size()}")
 
 def get_data():
-    dataset = datasets.load_dataset("bookcorpus", split="train[:10%]").shuffle(seed=1034).select(range(12000))
+    dataset = datasets.load_dataset("bookcorpus", split="train[:20%]").shuffle(seed=1034).select(range(num_examples))
     return dataset
 
 def get_args():
@@ -97,11 +98,15 @@ def get_args():
                         help="shows output")
     parser.add_argument('--shot', dest='shot', default=0,
                         help="shows output")
+    parser.add_argument('--num_examples', dest='num_examples', default=12000,
+                        help="shows output")
     args = parser.parse_args()
     global model_name
     global output_dir
     global shot
+    global num_examples
     shot = int(args.shot)
+    num_examples = int(args.num_examples)
     model_name = args.model_name
     output_dir = args.output_dir
 
