@@ -30,9 +30,9 @@ def save_examples(model, dataloader, accelerator, tokenizer, high_bound, low_bou
             # all_highs = accelerator.gather_for_metrics((input_ids,))
             # accelerator.print("high", tokenizer.batch_decode(batch['input_ids']))
             # for high in all_highs:
-            highs.append(tokenizer.batch_decode(input_ids, skip_special_tokens=True)[0])
+            highs.append(input_ids.squeeze())
         elif outputs.loss.item() < low_bound:
-            lows.append(tokenizer.batch_decode(input_ids, skip_special_tokens=True)[0])
+            lows.append(input_ids.squeeze())
         #     curr_low = input_ids
             # accelerator.print("low", tokenizer.batch_decode(batch['input_ids']))
             # all_lows = accelerator.gather_for_metrics((input_ids,))

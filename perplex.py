@@ -186,11 +186,11 @@ def main1():
         #dataset.shuffle()
         # dataset = main.get_data()
         # tokenized_examples = [tokenizer(example) for example in all_examples]
-        tokenized_examples = tokenizer(all_examples)
+        # tokenized_examples = tokenizer(all_examples)
         # print("FORDOR")
         print(len(all_examples))
         # print(len(tokenized_examples))
-        tokenized_data = MyDataset(tokenized_examples)
+        tokenized_data = MyDataset({'input_ids': all_examples})
         dataloader = DataLoader(tokenized_data, shuffle=True, batch_size=1)
         q5 = torch.load(f"{main.output_dir}/quantile-0.05.pt")
         q95 = torch.load(f"{main.output_dir}/quantile-0.95.pt")
