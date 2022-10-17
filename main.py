@@ -27,7 +27,7 @@ def tokenize_data(dataset, tokenizer):
         return tokenizer(examples["text"])
 
     tokenized_data = dataset.map(tokenize_function, batched=True)
-    tokenized_data = tokenized_data.remove_columns("text")
+    # tokenized_data = tokenized_data.remove_columns("text")
     tokenized_data.set_format("torch")
     return tokenized_data
 

@@ -98,7 +98,7 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
         # curr_high = None
         curr_example = None
         target = None
-        curr_example = tokenizer.batch_decode(input_ids, skip_special_tokens=True)[0]
+        curr_example = batch['text'][0]
         # if outputs.loss.item() > (high_bound + low_bound)/2:
 
         target = high_pp_target if outputs.loss.item() > (high_bound + low_bound)/2.0 else low_pp_target
@@ -186,11 +186,11 @@ def main1():
         #dataset.shuffle()
         # dataset = main.get_data()
         # tokenized_examples = [tokenizer(example) for example in all_examples]
-        # tokenized_examples = tokenizer(all_examples)
+        tokenized_examples = tokenizer(all_examples)
         # print("FORDOR")
         print(len(all_examples))
         # print(len(tokenized_examples))
-        tokenized_data = MyDataset({'input_ids': all_examples})
+        tokenized_data = MyDataset(tokenized_examples)
         dataloader = DataLoader(tokenized_data, shuffle=True, batch_size=1)
         q5 = torch.load(f"{main.output_dir}/quantile-0.05.pt")
         q95 = torch.load(f"{main.output_dir}/quantile-0.95.pt")
