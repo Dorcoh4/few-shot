@@ -20,9 +20,10 @@ def save_examples(model, dataloader, accelerator, tokenizer, high_bound, low_bou
     highs = []
     lows = []
     progress_bar = tqdm(range(len(dataloader)))
+    empty_ids = torch.tensor([[tokenizer.eos_token_id]]).cuda()
     for batch in dataloader:
         input_ids = batch['input_ids'].cuda()
-        outputs = model(input_ids=input_ids, labels=input_ids)
+        outputs = model(input_ids=empty_ids, labels=input_ids)
         # curr_low = None
         # curr_high = None
         if outputs.loss.item() > high_bound:
@@ -30,9 +31,9 @@ def save_examples(model, dataloader, accelerator, tokenizer, high_bound, low_bou
             # all_highs = accelerator.gather_for_metrics((input_ids,))
             # accelerator.print("high", tokenizer.batch_decode(batch['input_ids']))
             # for high in all_highs:
-            highs.append(input_ids.squeeze())
+            highs.append(batch['text'][0])
         elif outputs.loss.item() < low_bound:
-            lows.append(input_ids.squeeze())
+            lows.append(batch['text'][0])
         #     curr_low = input_ids
             # accelerator.print("low", tokenizer.batch_decode(batch['input_ids']))
             # all_lows = accelerator.gather_for_metrics((input_ids,))

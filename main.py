@@ -33,16 +33,17 @@ def tokenize_data(dataset, tokenizer):
 
 
 
-def print_quantiles(model, dataloader, accelerator):
+def print_quantiles(model, dataloader, accelerator, tokenizer):
     losses = []
     # dataloader = accelerator.prepare(dataloader)
     # model = model.to(accelerator.device)
     # model = model.cuda()
     progress_bar = tqdm(range(len(dataloader)))
     print("Going over data.........")
+    empty_ids = torch.tensor([[tokenizer.eos_token_id]]).cuda()
     for batch in dataloader:
         input_ids = batch['input_ids'].cuda()
-        outputs = model(input_ids=input_ids, labels=input_ids)
+        outputs = model(input_ids=empty_ids, labels=input_ids)
 
         # all_loss = accelerator.gather_for_metrics((outputs.loss.unsqueeze(0),))
         # print(len(all_loss))
@@ -92,6 +93,8 @@ def get_args():
                         help='FORDOR')
     parser.add_argument('-o', '--prompt_q', dest='prompt_q',
                         help="shows output")
+    parser.add_argument('--prompt_after', dest='prompt_after',
+                        help="shows output")
     parser.add_argument('--high_pp_target', dest='high_pp_target',
                         help="shows output")
     parser.add_argument('--low_pp_target', dest='low_pp_target',
@@ -125,7 +128,7 @@ def main1():
         dataset = get_data()
         tokenized_data = tokenize_data(dataset, tokenizer)
         dataloader = DataLoader(tokenized_data, shuffle=False, batch_size=1)
-        print_quantiles(model, dataloader, accelerator)
+        print_quantiles(model, dataloader, accelerator, tokenizer)
 
 
 if __name__ == '__main__':
