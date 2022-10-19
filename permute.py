@@ -20,8 +20,10 @@ high_pp_target = "no"
 low_pp_target = "yes"
 prompt_q = "Is this sentence common?"
 prompt_after = ""
+labels = []
+perms = None
 
-def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bound, all_lows, all_highs):
+def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bound, all_lows, all_highs, collect_labels):
     # dataloader, tokenizer = accelerator.prepare(dataloader, tokenizer)
     # model = model.to(accelerator.device)
     model.parallelize()
@@ -60,7 +62,7 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
                 new_ex = random.choice(example_list)
             used_examples.append(new_ex)
 
-            few_shot += f"{prompt_q}\n{new_ex}\n{post_example}{curr_target}.\n###\n"
+            few_shot += f"{prompt_q}\n\"{new_ex}\"\n{post_example}{curr_target}.\n###\n"
         # high_ex2 = high_ex
         # while high_ex2 in used_examples:
         #     high_ex2 = random.choice(all_highs)
@@ -108,8 +110,9 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
         target = high_pp_target if outputs.loss.item() > (high_bound + low_bound)/2.0 else low_pp_target
         # elif outputs.loss.item() < low_bound:
         #     # curr_example = tokenizer.batch_decode(input_ids, skip_special_tokens=True)[0]
+        if collect_labels:
 
-        if curr_example is not None:
+        elif curr_example is not None:
             prompt = craft_prompt(curr_example)
             prompt_tokens = tokenizer(prompt, return_tensors="pt").input_ids.cuda()
             # print("what is this ",prompt_tokens)
@@ -189,7 +192,8 @@ def main1():
                 for high in curr_highs:
                     all_highs.append(high)
         all_examples = all_lows + all_highs
-
+        global perms
+        perms = [random.shuffle(list(range(len(all_examples)))) for i in range(1000)]
         #dataset.shuffle()
         # dataset = main.get_data()
         # tokenized_examples = [tokenizer(example) for example in all_examples]
@@ -199,13 +203,14 @@ def main1():
         print(len(all_examples))
         # print(len(tokenized_examples))
         tokenized_data = MyDataset(tokenized_examples)
-        dataloader = DataLoader(tokenized_data, shuffle=True, batch_size=1)
+        dataloader = DataLoader(tokenized_data, shuffle=False, batch_size=1)
         q5 = torch.load(f"{main.output_dir}/quantile-0.05.pt")
         q95 = torch.load(f"{main.output_dir}/quantile-0.95.pt")
         print("quantiles:")
         print(q5)
         print(q95)
-        check_perplex(model, dataloader, tokenizer, accelerator, q95, q5, all_lows, all_highs)
+        check_perplex(model, dataloader, tokenizer, accelerator, q95, q5, all_lows, all_highs, True)
+        check_perplex(model, dataloader, tokenizer, accelerator, q95, q5, all_lows, all_highs, False)
 
 
 if __name__ == '__main__':
