@@ -21,7 +21,6 @@ low_pp_target = "yes"
 prompt_q = "Is this sentence common?"
 prompt_after = ""
 labels = []
-perms = None
 
 def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bound, all_lows, all_highs, collect_labels):
     # dataloader, tokenizer = accelerator.prepare(dataloader, tokenizer)
@@ -87,12 +86,16 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
         # return f"{prompt_q} {high_ex} {no_str} {prompt_q} {low_ex} {yes_str} {prompt_q} {high_ex2} {no_str} " \
         #        f"{prompt_q} {low_ex2} {yes_str} {prompt_q} {high_ex3} {no_str} {prompt_q} {low_ex3} {yes_str} {prompt_q} {example} "
         return f"{few_shot}\"{example}\"\n{prompt_q}\n{post_example}"
-    win_cnt = 0
+    win_cnt = [0 for i in range(1001)]
     tot_cnt = 0
-    unk_cnt = 0
+    unk_cnt = [0 for i in range(1001)]
     batch_cnt = 0
+    print ("FORDOR", len(dataloader))
     empty_ids = torch.tensor([[tokenizer.eos_token_id]]).cuda()
     progress_bar = tqdm(range(len(dataloader)))
+    perms = [list(range(len(dataloader))) for i in range(1001)]
+    for i in range(1000):
+        random.shuffle(perms[i])
     for batch in dataloader:
         input_ids = batch['input_ids'].cuda()
         outputs = model(input_ids=empty_ids, labels=input_ids)
@@ -111,7 +114,7 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
         # elif outputs.loss.item() < low_bound:
         #     # curr_example = tokenizer.batch_decode(input_ids, skip_special_tokens=True)[0]
         if collect_labels:
-
+            labels.append(target)
         elif curr_example is not None:
             prompt = craft_prompt(curr_example)
             prompt_tokens = tokenizer(prompt, return_tensors="pt").input_ids.cuda()
@@ -120,25 +123,53 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
             # generated_text = tokenizer.batch_decode(generated_ids[:,prompt_tokens.size()[1]:], skip_special_tokens=True)[0]
             generated_text = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
             lower_text = generated_text.lower()
-            if lower_text == target or (lower_text.startswith(target) and not lower_text[len(target)].isalnum()): #FORDOR
-                win_cnt += 1
-            elif not (high_pp_target in lower_text or low_pp_target in lower_text):
-                unk_cnt += 1
-                print(f"unknown : {tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]}")
-            else:
-                print(f"WRONG! expected {target} got {generated_text} score: {outputs.loss.item()} prompt: {prompt}")
+            for j in range(1001):
+                target = labels[perms[j][batch_cnt]]
+                if lower_text == target or (lower_text.startswith(target) and not lower_text[len(target)].isalnum()): #FORDOR
+                    win_cnt[j] += 1
+                elif not (high_pp_target in lower_text or low_pp_target in lower_text):
+                    unk_cnt[j] += 1
+                    # print(f"unknown : {tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]}")
+                    # print(f"WRONG! expected {target} got {generated_text} score: {outputs.loss.item()} prompt: {prompt}")
             tot_cnt += 1
 
             # print(prompt_tokens.size())
             # print(f"FORDOR actual result::: {generated_text} -expected- ({target})")
         batch_cnt +=1
         progress_bar.update(1)
-        if batch_cnt % 100 == 0 and tot_cnt > 0:
-            print(f"tot : {tot_cnt}, wins : {win_cnt}, unks: {unk_cnt}")
-            print(f"win% = {float(win_cnt) / tot_cnt}, unk% = {float(unk_cnt) / tot_cnt}")
-    print("FINALLY:")
-    print(f"tot : {tot_cnt}, wins : {win_cnt}, unks: {unk_cnt}")
-    print(f"win% = {float(win_cnt) / tot_cnt}, unk% = {float(unk_cnt) / tot_cnt}")
+        res = torch.tensor(win_cnt) / tot_cnt
+        # res = [float(win_cnt[j]) / tot_cnt for j in range(1000)]
+
+
+        # accelerator.print(f"quantile 0.05  {torch.quantile(res, 0.05)}")
+        # accelerator.print(f"quantile 0.1  {torch.quantile(res, 0.1)}")
+        # accelerator.print(f"quantile 0.15  {torch.quantile(res, 0.15)}")
+        # accelerator.print(f"quantile 0.2  {torch.quantile(res, 0.2)}")
+        # accelerator.print(f"quantile 0.25  {torch.quantile(res, 0.25)}")
+        # accelerator.print(f"quantile 0.3  {torch.quantile(res, 0.3)}")
+        # accelerator.print(f"quantile 0.4  {torch.quantile(res, 0.4)}")
+        # accelerator.print(f"quantile 0.5  {torch.quantile(res, 0.5)}")
+        # accelerator.print(f"quantile 0.6  {torch.quantile(res, 0.6)}")
+        # accelerator.print(f"quantile 0.7  {torch.quantile(res, 0.7)}")
+        # accelerator.print(f"quantile 0.75  {torch.quantile(res, 0.75)}")
+        # accelerator.print(f"quantile 0.8  {torch.quantile(res, 0.8)}")
+        # accelerator.print(f"quantile 0.85  {torch.quantile(res, 0.85)}")
+        # accelerator.print(f"quantile 0.9  {torch.quantile(res, 0.9)}")
+        # accelerator.print(f"quantile 0.95  {torch.quantile(res, 0.95)}")
+        # accelerator.print(f"quantile 0.99  {torch.quantile(res, 0.99)}")
+        # accelerator.print(f"length {res.size()}")
+        # if batch_cnt % 100 == 0 and tot_cnt > 0:
+            # print(f"tot : {tot_cnt}, wins : {win_cnt}, unks: {unk_cnt}")
+            # print(f"win% = {float(win_cnt) / tot_cnt}, unk% = {float(unk_cnt) / tot_cnt}")
+    # print("FINALLY:")
+    # print(f"tot : {tot_cnt}, wins : {win_cnt}, unks: {unk_cnt}")
+    # print(f"win% = {float(win_cnt) / tot_cnt}, unk% = {float(unk_cnt) / tot_cnt}")
+    if not collect_labels:
+        q_list = [float(x) / 1000 for x in range(0, 1001)]
+        global output_dir
+        for q in q_list:
+            # torch.save(torch.quantile(res, q), f"{output_dir}/quantile-{q}.pt")
+            print(f"quantile {q}  {torch.quantile(res, q)}")
 
 
 class MyDataset(torch.utils.data.Dataset):
@@ -192,8 +223,7 @@ def main1():
                 for high in curr_highs:
                     all_highs.append(high)
         all_examples = all_lows + all_highs
-        global perms
-        perms = [random.shuffle(list(range(len(all_examples)))) for i in range(1000)]
+
         #dataset.shuffle()
         # dataset = main.get_data()
         # tokenized_examples = [tokenizer(example) for example in all_examples]
