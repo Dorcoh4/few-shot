@@ -60,7 +60,7 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
                 new_ex = random.choice(example_list)
             used_examples.append(new_ex)
 
-            few_shot += f"{prompt_q}\n{new_ex}\n{post_example}{curr_target}.\n###\n"
+            few_shot += f"{prompt_q}\n\"{new_ex}\"\n{post_example}{curr_target}.\n###\n"
         # high_ex2 = high_ex
         # while high_ex2 in used_examples:
         #     high_ex2 = random.choice(all_highs)
