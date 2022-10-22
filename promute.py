@@ -18,13 +18,17 @@ model_name = main.model_name
 
 high_pp_target = "no"
 low_pp_target = "yes"
-prompt_q = "Is this a probable sentence?"
+prompt_q = "Is this sentence common?"
 prompt_after = ""
 
 def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bound, all_lows, all_highs):
     # dataloader, tokenizer = accelerator.prepare(dataloader, tokenizer)
     # model = model.to(accelerator.device)
     model.parallelize()
+    adjs = []
+    with open('english-adjectives.txt') as topo_file:
+        for line in topo_file:
+            adjs.append([line.strip(),0,0])
 
     for file in os.listdir(main.output_dir):
         if file.startswith("all_low_"):
@@ -40,7 +44,7 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
     # all_highs = torch.load("all_high.pt")
     # accelerator.print(f"all_high {len(all_highs)} : {all_highs[0]}")
     # accelerator.print(f"all_high {len(all_lows)} : {all_lows[0]}")
-    def craft_prompt(example):
+    def craft_prompt(example , adjective):
 
         # no_str = "yes."
         # yes_str = "no."
@@ -48,6 +52,7 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
         post_example = "" if (prompt_after == "" or prompt_after is None) else prompt_after + "\n"
         used_examples = [example]
         few_shot = ""
+        prompt_q = f"Is this sentence {adjective}?"
         for i in range(main.shot):
             if i%2 == 0:
                 example_list = all_highs
@@ -60,7 +65,7 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
                 new_ex = random.choice(example_list)
             used_examples.append(new_ex)
 
-            few_shot += f"\"{new_ex}\"\n{prompt_q}\n{post_example}{curr_target}.\n"
+            few_shot += f"{prompt_q}\n\"{new_ex}\"\n{post_example}{curr_target}.\n###\n"
         # high_ex2 = high_ex
         # while high_ex2 in used_examples:
         #     high_ex2 = random.choice(all_highs)
@@ -110,33 +115,36 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
         #     # curr_example = tokenizer.batch_decode(input_ids, skip_special_tokens=True)[0]
 
         if curr_example is not None:
-            prompt = craft_prompt(curr_example)
-            prompt_tokens = tokenizer(prompt, return_tensors="pt").input_ids.cuda()
-            # print("what is this ",prompt_tokens)
-            generated_ids = model.generate(prompt_tokens, max_new_tokens=3)
-            # generated_text = tokenizer.batch_decode(generated_ids[:,prompt_tokens.size()[1]:], skip_special_tokens=True)[0]
-            generated_text = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
-            lower_text = generated_text.lower()
-            if lower_text == target or (lower_text.startswith(target) and not lower_text[len(target)].isalnum()): #FORDOR
-                win_cnt += 1
-            elif not (high_pp_target in lower_text or low_pp_target in lower_text):
-                unk_cnt += 1
-                print(f"unknown : {tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]}")
-            else:
-                print(f"WRONG! expected {target} got {generated_text} score: {outputs.loss.item()} prompt: {prompt}")
+            for thruple in adjs:
+                prompt = craft_prompt(curr_example, thruple[0])
+                prompt_tokens = tokenizer(prompt, return_tensors="pt").input_ids.cuda()
+                # print("what is this ",prompt_tokens)
+                generated_ids = model.generate(prompt_tokens, max_new_tokens=3)
+                # generated_text = tokenizer.batch_decode(generated_ids[:,prompt_tokens.size()[1]:], skip_special_tokens=True)[0]
+                generated_text = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
+                lower_text = generated_text.lower()
+                if lower_text == target or (lower_text.startswith(target) and not lower_text[len(target)].isalnum()): #FORDOR
+                    thruple[1] += 1
+                elif not (high_pp_target in lower_text or low_pp_target in lower_text):
+                    thruple[2] += 1
+                    # print(f"unknown : {tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]}")
+                # else:
+                #     print(f"WRONG! expected {target} got {generated_text} score: {outputs.loss.item()} prompt: {prompt}")
             tot_cnt += 1
 
             # print(prompt_tokens.size())
             # print(f"FORDOR actual result::: {generated_text} -expected- ({target})")
         batch_cnt +=1
         progress_bar.update(1)
-        if batch_cnt % 100 == 0 and tot_cnt > 0:
-            print(f"tot : {tot_cnt}, wins : {win_cnt}, unks: {unk_cnt}")
-            print(f"win% = {float(win_cnt) / tot_cnt}, unk% = {float(unk_cnt) / tot_cnt}")
+        # if batch_cnt % 100 == 0 and tot_cnt > 0:
+            # print(f"tot : {tot_cnt}, wins : {win_cnt}, unks: {unk_cnt}")
+            # print(f"win% = {float(win_cnt) / tot_cnt}, unk% = {float(unk_cnt) / tot_cnt}")
+    for thruple in adjs:
+        thruple[1] = thruple[1] / tot_cnt
     print("FINALLY:")
-    print(f"tot : {tot_cnt}, wins : {win_cnt}, unks: {unk_cnt}")
-    print(f"win% = {float(win_cnt) / tot_cnt}, unk% = {float(unk_cnt) / tot_cnt}")
-
+    # print(f"tot : {tot_cnt}, wins : {win_cnt}, unks: {unk_cnt}")
+    # print(f"win% = {float(win_cnt) / tot_cnt}, unk% = {float(unk_cnt) / tot_cnt}")
+    print(sorted(adjs, key=lambda tup: tup[1]))
 
 class MyDataset(torch.utils.data.Dataset):
     def __init__(self, texts):
