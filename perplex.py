@@ -47,20 +47,39 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
         # prompt_q = "Does this sentence perplex you?"
         post_example = "" if (prompt_after == "" or prompt_after is None) else prompt_after + "\n"
         used_examples = [example]
-        few_shot = ""
-        for i in range(main.shot):
-            if i%2 == 0:
-                example_list = all_highs
-                curr_target = high_pp_target
-            else:
-                example_list = all_lows
-                curr_target = low_pp_target
-            new_ex = example
-            while new_ex in used_examples:
-                new_ex = random.choice(example_list)
-            used_examples.append(new_ex)
+        if main.shot > 0:
+            few_shot = "Examples: "
+            if main.shot > 1:
+                # few_shot = "Please read the following examples:\n"
+                for i in range(main.shot):
+                    if i%2 == 0:
+                        example_list = all_highs
+                        curr_target = high_pp_target
+                    else:
+                        example_list = all_lows
+                        curr_target = low_pp_target
+                    new_ex = example
+                    while new_ex in used_examples:
+                        new_ex = random.choice(example_list)
+                    used_examples.append(new_ex)
 
-            few_shot += f"\"{new_ex}\"\n{prompt_q}\n{post_example}{curr_target}.\n"
+                    few_shot += f"{new_ex} {prompt_q} {post_example} {curr_target}. "
+                few_shot += "\nAnswer the following question similarly to the above examples:\n"
+            else:
+                few_shot = "Please read the following example then answer the second question:\n"
+                i = random.randint(0,1)
+                if i % 2 == 0:
+                    example_list = all_highs
+                    curr_target = high_pp_target
+                else:
+                    example_list = all_lows
+                    curr_target = low_pp_target
+                new_ex = example
+                while new_ex in used_examples:
+                    new_ex = random.choice(example_list)
+                used_examples.append(new_ex)
+
+                few_shot += f"Sentence: {new_ex}{prompt_q}{post_example}{curr_target}.\n"
         # high_ex2 = high_ex
         # while high_ex2 in used_examples:
         #     high_ex2 = random.choice(all_highs)
@@ -84,7 +103,7 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
 
         # return f"{prompt_q} {high_ex} {no_str} {prompt_q} {low_ex} {yes_str} {prompt_q} {high_ex2} {no_str} " \
         #        f"{prompt_q} {low_ex2} {yes_str} {prompt_q} {high_ex3} {no_str} {prompt_q} {low_ex3} {yes_str} {prompt_q} {example} "
-        return f"{few_shot}\"{example}\"\n{prompt_q}\n{post_example}"
+        return f"{few_shot}Sentence: {example}\nQuestion: {prompt_q}\n{post_example}"
     win_cnt = 0
     tot_cnt = 0
     unk_cnt = 0
