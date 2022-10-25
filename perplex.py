@@ -48,9 +48,9 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
         post_example = "" if (prompt_after == "" or prompt_after is None) else prompt_after + "\n"
         used_examples = [example]
         if main.shot > 0:
-            few_shot = "Examples: "
+            # few_shot = "Examples: "
             if main.shot > 1:
-                # few_shot = "Please read the following examples:\n"
+                few_shot = "Examples: "
                 for i in range(main.shot):
                     if i%2 == 0:
                         example_list = all_highs
@@ -63,8 +63,8 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
                         new_ex = random.choice(example_list)
                     used_examples.append(new_ex)
 
-                    few_shot += f"{new_ex} {prompt_q} {post_example} {curr_target}. "
-                few_shot += "\nAnswer the following question similarly to the above examples:\n"
+                    few_shot += f"Sentence: {new_ex}\nAnswer: {curr_target}. "
+                # few_shot += "\nAnswer the following question similarly to the above examples:\n"
             else:
                 few_shot = "Please read the following example then answer the second question:\n"
                 i = random.randint(0,1)
@@ -103,7 +103,7 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
 
         # return f"{prompt_q} {high_ex} {no_str} {prompt_q} {low_ex} {yes_str} {prompt_q} {high_ex2} {no_str} " \
         #        f"{prompt_q} {low_ex2} {yes_str} {prompt_q} {high_ex3} {no_str} {prompt_q} {low_ex3} {yes_str} {prompt_q} {example} "
-        return f"{few_shot}Sentence: {example}\nQuestion: {prompt_q}\n{post_example}"
+        return f"{few_shot}Question: is this sentence probable? Please answer similarly to the above examples\nSentence: {example}\nAnswer:"
     win_cnt = 0
     tot_cnt = 0
     unk_cnt = 0
