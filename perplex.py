@@ -26,6 +26,7 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
     # model = model.to(accelerator.device)
     model.parallelize()
     random.seed(424242)
+    torch.manual_seed(424242)
     for file in os.listdir(main.output_dir):
         if file.startswith("all_low_"):
             curr_lows = torch.load(f"{main.output_dir}/{file}")
