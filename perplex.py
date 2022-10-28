@@ -48,14 +48,12 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
         # prompt_q = "Does this sentence perplex you?"
         post_example = "" if (prompt_after == "" or prompt_after is None) else prompt_after + "\n"
         used_examples = [example]
-        permutation = list(range(main.shot))
-        random.shuffle(permutation)
         if main.shot > 0:
             few_shot = "Examples: "
             if main.shot > 1:
                 # few_shot = "Please read the following examples:\n"
                 for i in range(main.shot):
-                    if permutation[i]%2 == 0:
+                    if i%2 == 0:
                         example_list = all_highs
                         curr_target = high_pp_target
                     else:
