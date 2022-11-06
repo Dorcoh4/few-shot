@@ -48,28 +48,12 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
         # prompt_q = "Does this sentence perplex you?"
         post_example = "" if (prompt_after == "" or prompt_after is None) else prompt_after + "\n"
         used_examples = [example]
+        few_shot = ""
         if main.shot > 0:
             few_shot = "Examples: "
-            if main.shot > 1:
-                # few_shot = "Please read the following examples:\n"
-                for i in range(main.shot):
-                    if i%2 == 0:
-                        example_list = all_highs
-                        curr_target = high_pp_target
-                    else:
-                        example_list = all_lows
-                        curr_target = low_pp_target
-                    new_ex = example
-                    while new_ex in used_examples:
-                        new_ex = random.choice(example_list)
-                    used_examples.append(new_ex)
-
-                    few_shot += f"{new_ex} {post_example} {curr_target}. "
-                few_shot += "\nAnswer the following question similarly to the above examples:\n"
-            else:
-                few_shot = "Please read the following example then answer the second question:\n"
-                i = random.randint(0,1)
-                if i % 2 == 0:
+            for i in range(main.shot):
+                coin = random.randint(0, 1)
+                if coin%2 == 0:
                     example_list = all_highs
                     curr_target = high_pp_target
                 else:
@@ -80,7 +64,8 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
                     new_ex = random.choice(example_list)
                 used_examples.append(new_ex)
 
-                few_shot += f"Sentence: {new_ex}{prompt_q}{post_example}{curr_target}.\n"
+                few_shot += f"{new_ex} {post_example} {curr_target}. "
+            few_shot += "\nAnswer the following question similarly to the above examples:\n"
         # high_ex2 = high_ex
         # while high_ex2 in used_examples:
         #     high_ex2 = random.choice(all_highs)
