@@ -9,30 +9,29 @@ from tqdm import tqdm
 
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
 import torch
+from experiment_module import ExperimentModule
 
 model_name = main.model_name
 
 
-def save_examples(model, dataloader, accelerator, tokenizer, high_bound, low_bound):
+def save_examples(e_model, dataloader, high_bound, low_bound):
     # dataloader= accelerator.prepare(dataloader)
     # model = model.to(accelerator.device)
-    model.parallelize()
     highs = []
     lows = []
     progress_bar = tqdm(range(len(dataloader)))
-    empty_ids = torch.tensor([[tokenizer.eos_token_id]]).cuda()
     for batch in dataloader:
         input_ids = batch['input_ids'].cuda()
-        outputs = model(input_ids=empty_ids, labels=input_ids)
+        loss = e_model.get_loss(input_ids)
         # curr_low = None
         # curr_high = None
-        if outputs.loss.item() > high_bound:
+        if loss.item() > high_bound:
         #     curr_high = input_ids
             # all_highs = accelerator.gather_for_metrics((input_ids,))
             # accelerator.print("high", tokenizer.batch_decode(batch['input_ids']))
             # for high in all_highs:
             highs.append(batch['text'][0])
-        elif outputs.loss.item() < low_bound:
+        elif loss.item() < low_bound:
             lows.append(batch['text'][0])
         #     curr_low = input_ids
             # accelerator.print("low", tokenizer.batch_decode(batch['input_ids']))
@@ -73,19 +72,18 @@ def save_examples(model, dataloader, accelerator, tokenizer, high_bound, low_bou
 def main1():
     args = main.get_args()
     with torch.no_grad():
-        accelerator = None
-        model = AutoModelForSeq2SeqLM.from_pretrained(main.model_name)
-        tokenizer = AutoTokenizer.from_pretrained(main.model_name)
-        model.eval()
+        e_model = ExperimentModule(main.model_name)
+        e_model.parallelize()
+        e_model.model.eval()
         dataset = main.get_data()
-        tokenized_data = main.tokenize_data(dataset, tokenizer)
+        tokenized_data = main.tokenize_data(dataset, e_model.tokenizer)
         dataloader = DataLoader(tokenized_data, shuffle=False, batch_size=1)
         q5 = torch.load(f"{main.output_dir}/quantile-0.05.pt")
         q95 = torch.load(f"{main.output_dir}/quantile-0.95.pt")
         print("quantiles:")
         print(q5)
         print(q95)
-        save_examples(model, dataloader, accelerator, tokenizer, q95, q5)
+        save_examples(e_model, dataloader, q95, q5)
 
 
 if __name__ == '__main__':

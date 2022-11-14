@@ -10,6 +10,9 @@ import argparse
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
 import torch
 
+import main
+from experiment_module import ExperimentModule
+
 print(f"device count: {torch.cuda.device_count()}")
 
 model_name = "bigscience/T0_3B"
@@ -33,22 +36,20 @@ def tokenize_data(dataset, tokenizer):
 
 
 
-def print_quantiles(model, dataloader, accelerator, tokenizer):
+def print_quantiles(e_model, dataloader):
     losses = []
     # dataloader = accelerator.prepare(dataloader)
     # model = model.to(accelerator.device)
     # model = model.cuda()
     progress_bar = tqdm(range(len(dataloader)))
     print("Going over data.........")
-    empty_ids = torch.tensor([[tokenizer.eos_token_id]]).cuda()
     for batch in dataloader:
         input_ids = batch['input_ids'].cuda()
-        outputs = model(input_ids=empty_ids, labels=input_ids)
 
-        # all_loss = accelerator.gather_for_metrics((outputs.loss.unsqueeze(0),))
-        # print(len(all_loss))
-        # for loss in all_loss:
-        losses.append(outputs.loss.unsqueeze(0))
+        loss = e_model.get_loss(input_ids)
+
+
+        losses.append(loss.unsqueeze(0))
         progress_bar.update(1)
     res = torch.cat(losses)
     res = res.type(torch.FloatTensor)
@@ -120,15 +121,21 @@ def main1():
     global model_name
     args = get_args()
     with torch.no_grad():
-        accelerator = None
-        model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        model.parallelize()
-        model.eval()
+        from transformers import T5Tokenizer, T5ForConditionalGeneration
+
+        tokenizer = T5Tokenizer.from_pretrained("t5-11b")
+        model = T5ForConditionalGeneration.from_pretrained("t5-11b")
+
+        input_ids = tokenizer("", return_tensors="pt").input_ids
+        outputs = model.generate(input_ids)
+        print(tokenizer.decode(outputs[0], skip_special_tokens=True))
+        e_model = ExperimentModule(model_name)
+        e_model.parallelize()
+        e_model.model.eval()
         dataset = get_data()
-        tokenized_data = tokenize_data(dataset, tokenizer)
+        tokenized_data = tokenize_data(dataset, e_model.tokenizer)
         dataloader = DataLoader(tokenized_data, shuffle=False, batch_size=1)
-        print_quantiles(model, dataloader, accelerator, tokenizer)
+        print_quantiles(e_model, dataloader)
 
 
 if __name__ == '__main__':

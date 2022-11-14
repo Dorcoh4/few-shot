@@ -13,6 +13,8 @@ from tqdm import tqdm
 
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
 import torch
+from experiment_module import ExperimentModule
+
 
 model_name = main.model_name
 
@@ -21,10 +23,9 @@ low_pp_target = "yes"
 prompt_q = "Is this a probable sentence?"
 prompt_after = ""
 
-def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bound, all_lows, all_highs):
+def check_perplex(e_model, dataloader, high_bound, low_bound, all_lows, all_highs):
     # dataloader, tokenizer = accelerator.prepare(dataloader, tokenizer)
     # model = model.to(accelerator.device)
-    model.parallelize()
     random.seed(424242)
     torch.manual_seed(424242)
     for file in os.listdir(main.output_dir):
@@ -94,11 +95,10 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
     tot_cnt = 0
     unk_cnt = 0
     batch_cnt = 0
-    empty_ids = torch.tensor([[tokenizer.eos_token_id]]).cuda()
     progress_bar = tqdm(range(len(dataloader)))
     for batch in dataloader:
         input_ids = batch['input_ids'].cuda()
-        outputs = model(input_ids=empty_ids, labels=input_ids)
+        loss = e_model.get_loss(input_ids)
         # outputs2 = model(input_ids=input_ids, labels=input_ids)
         # if outputs1.loss.item() != outputs2.loss.item():
         #     print(f"oh its different!!! {outputs1.loss.item()} {outputs2.loss.item()}")
@@ -110,23 +110,23 @@ def check_perplex(model, dataloader, tokenizer, accelerator, high_bound, low_bou
         curr_example = batch['text'][0]
         # if outputs.loss.item() > (high_bound + low_bound)/2:
 
-        target = high_pp_target if outputs.loss.item() > (high_bound + low_bound)/2.0 else low_pp_target
+        target = high_pp_target if loss.item() > (high_bound + low_bound)/2.0 else low_pp_target
         # elif outputs.loss.item() < low_bound:
         #     # curr_example = tokenizer.batch_decode(input_ids, skip_special_tokens=True)[0]
 
         if curr_example is not None:
             prompt = craft_prompt(curr_example)
-            prompt_tokens = tokenizer(prompt, return_tensors="pt").input_ids.cuda()
+            prompt_tokens = e_model.tokenizer(prompt, return_tensors="pt").input_ids.cuda()
             # print("what is this ",prompt_tokens)
-            generated_ids = model.generate(prompt_tokens, max_new_tokens=3)
+            generated_ids = e_model.model.generate(prompt_tokens, max_new_tokens=3)
             # generated_text = tokenizer.batch_decode(generated_ids[:,prompt_tokens.size()[1]:], skip_special_tokens=True)[0]
-            generated_text = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
+            generated_text = e_model.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
             lower_text = generated_text.lower()
             if lower_text == target or (lower_text.startswith(target) and not lower_text[len(target)].isalnum()): #FORDOR
                 win_cnt += 1
             elif not (high_pp_target in lower_text or low_pp_target in lower_text):
                 unk_cnt += 1
-                print(f"unknown : {tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]}")
+                print(f"unknown : {e_model.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]}")
             else:
                 print(f"WRONG! expected {target} got {generated_text} score: {outputs.loss.item()} prompt: {prompt}")
             tot_cnt += 1
@@ -179,9 +179,8 @@ def main1():
             high_pp_target = args.high_pp_target
         if args.low_pp_target is not None:
             low_pp_target = args.low_pp_target
-        model = AutoModelForSeq2SeqLM.from_pretrained(main.model_name)
-        tokenizer = AutoTokenizer.from_pretrained(main.model_name)
         model.eval()
+
         all_lows = []
         all_highs = []
         for file in os.listdir(main.output_dir):
@@ -195,10 +194,13 @@ def main1():
                     all_highs.append(high)
         all_examples = all_lows + all_highs
 
-        #dataset.shuffle()
+        e_model = ExperimentModule(main.model_name)
+        e_model.parallelize()
+        e_model.model.eval()
+
         # dataset = main.get_data()
         # tokenized_examples = [tokenizer(example) for example in all_examples]
-        tokenized_examples = tokenizer(all_examples)
+        tokenized_examples = e_model.tokenizer(all_examples)
         tokenized_examples['text'] = all_examples
         # print("FORDOR")
         print(len(all_examples))
@@ -210,7 +212,7 @@ def main1():
         print("quantiles:")
         print(q5)
         print(q95)
-        check_perplex(model, dataloader, tokenizer, accelerator, q95, q5, all_lows, all_highs)
+        check_perplex(e_model, dataloader, q95, q5, all_lows, all_highs)
 
 
 if __name__ == '__main__':
