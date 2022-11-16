@@ -50,7 +50,6 @@ def check_perplex(e_model, dataloader, high_bound, low_bound, all_lows, all_high
         post_example = "" if (prompt_after == "" or prompt_after is None) else prompt_after + "\n"
         used_examples = [example]
         few_shot = ""
-        if main.shot > 0:
             few_shot = "Examples: "
             for i in range(main.shot):
                 coin = random.randint(0, 1)
