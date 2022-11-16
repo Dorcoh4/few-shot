@@ -50,24 +50,21 @@ def check_perplex(e_model, dataloader, high_bound, low_bound, all_lows, all_high
         post_example = "" if (prompt_after == "" or prompt_after is None) else prompt_after + "\n"
         used_examples = [example]
         few_shot = ""
-        if main.shot > 0:
-            few_shot = "Examples: "
-            for i in range(main.shot):
-                coin = random.randint(0, 1)
-                if coin%2 == 0:
-                    example_list = all_highs
-                    curr_target = high_pp_target
-                else:
-                    example_list = all_lows
-                    curr_target = low_pp_target
-                new_ex = example
-                while new_ex in used_examples:
-                    new_ex = random.choice(example_list)
-                used_examples.append(new_ex)
+        permutation = list(range(main.shot))
+        random.shuffle(permutation)
+        for i in range(main.shot):
+            if permutation[i]%2 == 0:
+                example_list = all_highs
+                curr_target = high_pp_target
+            else:
+                example_list = all_lows
+                curr_target = low_pp_target
+            new_ex = example
+            while new_ex in used_examples:
+                new_ex = random.choice(example_list)
+            used_examples.append(new_ex)
 
-                few_shot += f"{new_ex} {post_example} {curr_target}. "
-                few_shot += f"{new_ex} {post_example}=> {curr_target}. "
-            few_shot += "\nAnswer the following question similarly to the above examples:\n"
+            few_shot += f"Sentence: {new_ex}\nQuestion: {prompt_q}\n{post_example}Answer: {curr_target}\n###\n"
         # high_ex2 = high_ex
         # while high_ex2 in used_examples:
         #     high_ex2 = random.choice(all_highs)
@@ -91,7 +88,7 @@ def check_perplex(e_model, dataloader, high_bound, low_bound, all_lows, all_high
 
         # return f"{prompt_q} {high_ex} {no_str} {prompt_q} {low_ex} {yes_str} {prompt_q} {high_ex2} {no_str} " \
         #        f"{prompt_q} {low_ex2} {yes_str} {prompt_q} {high_ex3} {no_str} {prompt_q} {low_ex3} {yes_str} {prompt_q} {example} "
-        return f"{few_shot}Sentence: {example}\nQuestion: {prompt_q}\n{post_example}"
+        return f"{few_shot}Sentence: {example}\nQuestion: {prompt_q}\n{post_example}Answer:"
     win_cnt = 0
     tot_cnt = 0
     unk_cnt = 0
