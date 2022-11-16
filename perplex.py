@@ -66,6 +66,7 @@ def check_perplex(e_model, dataloader, high_bound, low_bound, all_lows, all_high
                 used_examples.append(new_ex)
 
                 few_shot += f"{new_ex} {post_example} {curr_target}. "
+                few_shot += f"{new_ex} {post_example}=> {curr_target}. "
             few_shot += "\nAnswer the following question similarly to the above examples:\n"
         # high_ex2 = high_ex
         # while high_ex2 in used_examples:
@@ -128,7 +129,7 @@ def check_perplex(e_model, dataloader, high_bound, low_bound, all_lows, all_high
                 unk_cnt += 1
                 print(f"unknown : {e_model.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]}")
             else:
-                print(f"WRONG! expected {target} got {generated_text} score: {outputs.loss.item()} prompt: {prompt}")
+                print(f"WRONG! expected {target} got {generated_text} score: {loss.item()} prompt: {prompt}")
             tot_cnt += 1
 
             # print(prompt_tokens.size())
@@ -179,7 +180,6 @@ def main1():
             high_pp_target = args.high_pp_target
         if args.low_pp_target is not None:
             low_pp_target = args.low_pp_target
-        model.eval()
 
         all_lows = []
         all_highs = []
