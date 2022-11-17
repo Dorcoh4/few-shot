@@ -53,7 +53,7 @@ def check_perplex(e_model, dataloader, high_bound, low_bound, all_lows, all_high
         permutation = list(range(main.shot))
         random.shuffle(permutation)
         for i in range(main.shot):
-            if permutation[i]%2 == 0:
+            if permutation[i] % 2 == 0:
                 example_list = all_highs
                 curr_target = high_pp_target
             else:
@@ -64,7 +64,7 @@ def check_perplex(e_model, dataloader, high_bound, low_bound, all_lows, all_high
                 new_ex = random.choice(example_list)
             used_examples.append(new_ex)
 
-            few_shot += f"Sentence: {new_ex}\nQuestion: {prompt_q}\n{post_example}Answer: {curr_target}\n###\n"
+            few_shot += f"Question: {prompt_q}\nSentence: {new_ex}\n{post_example}Answer: {curr_target}\n###\n"
         # high_ex2 = high_ex
         # while high_ex2 in used_examples:
         #     high_ex2 = random.choice(all_highs)
@@ -88,7 +88,7 @@ def check_perplex(e_model, dataloader, high_bound, low_bound, all_lows, all_high
 
         # return f"{prompt_q} {high_ex} {no_str} {prompt_q} {low_ex} {yes_str} {prompt_q} {high_ex2} {no_str} " \
         #        f"{prompt_q} {low_ex2} {yes_str} {prompt_q} {high_ex3} {no_str} {prompt_q} {low_ex3} {yes_str} {prompt_q} {example} "
-        return f"{few_shot}Sentence: {example}\nQuestion: {prompt_q}\n{post_example}Answer:"
+        return f"{few_shot}Question: {prompt_q}\nSentence: {example}\n{post_example}Answer:"
     win_cnt = 0
     tot_cnt = 0
     unk_cnt = 0
@@ -117,9 +117,9 @@ def check_perplex(e_model, dataloader, high_bound, low_bound, all_lows, all_high
             prompt_tokens = e_model.tokenizer(prompt, return_tensors="pt").input_ids.cuda()
             # print("what is this ",prompt_tokens)
             generated_ids = e_model.model.generate(prompt_tokens, max_new_tokens=3)
+            generated_text = e_model.get_answer(generated_ids, prompt_tokens)
             # generated_text = tokenizer.batch_decode(generated_ids[:,prompt_tokens.size()[1]:], skip_special_tokens=True)[0]
-            generated_text = e_model.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
-            lower_text = generated_text.lower()
+            lower_text = generated_text.lower().lstrip()
             if lower_text == target or (lower_text.startswith(target) and not lower_text[len(target)].isalnum()): #FORDOR
                 win_cnt += 1
             elif not (high_pp_target in lower_text or low_pp_target in lower_text):

@@ -47,3 +47,9 @@ class ExperimentModule:
             self.model = self.model.cuda()
         else:
             self.model.parallelize()
+
+    def get_answer(self, generated_ids, prompt_tokens):
+        if self.name.startswith("facebook/opt"): #or  "gpt-neo" in self.name:
+            return self.tokenizer.batch_decode(generated_ids[:,prompt_tokens.size()[1]:], skip_special_tokens=True)[0]
+        else:
+            return self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]

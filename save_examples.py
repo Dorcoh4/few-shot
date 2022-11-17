@@ -66,8 +66,8 @@ def save_examples(e_model, dataloader, high_bound, low_bound):
     # print(highs)
     print(len(lows))
     # if accelerator.is_main_process:
-    torch.save(highs, f"{main.output_dir}/all_low_{str(uuid.uuid4())}.pt")
-    torch.save(lows, f"{main.output_dir}/all_high_{str(uuid.uuid4())}.pt")
+    torch.save(lows, f"{main.output_dir}/all_low_{str(uuid.uuid4())}.pt")
+    torch.save(highs, f"{main.output_dir}/all_high_{str(uuid.uuid4())}.pt")
 
 def main1():
     args = main.get_args()
