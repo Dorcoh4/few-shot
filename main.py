@@ -123,12 +123,17 @@ def main1():
     with torch.no_grad():
         from transformers import T5Tokenizer, T5ForConditionalGeneration
 
-        tokenizer = T5Tokenizer.from_pretrained("t5-11b")
-        model = T5ForConditionalGeneration.from_pretrained("t5-11b")
+        # tokenizer = T5Tokenizer.from_pretrained("t5-11b")
+        # model = T5ForConditionalGeneration.from_pretrained("t5-11b")
 
-        input_ids = tokenizer("", return_tensors="pt").input_ids
-        outputs = model.generate(input_ids)
-        print(tokenizer.decode(outputs[0], skip_special_tokens=True))
+        # input_ids = tokenizer("", return_tensors="pt").input_ids
+        # outputs = model.generate(input_ids)
+        # print(tokenizer.decode(outputs[0], skip_special_tokens=True))
+        # from evaluate import load
+        # perplexity = load("perplexity", module_type="metric")
+        # perplexity2 = load("perplexity", module_type="measurement")
+        # results = perplexity.compute(predictions="we are", model_id=args.model_name, batch_size=1)
+        # results2 = perplexity2.compute(data="we are", model_id=args.model_name, batch_size=1)
         e_model = ExperimentModule(model_name)
         e_model.parallelize()
         e_model.model.eval()
