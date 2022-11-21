@@ -1,5 +1,6 @@
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer, T5Tokenizer, T5ForConditionalGeneration
 import torch
+import random
 from parallelformers import parallelize
 
 def get_module_and_tokenizer_by_name(name):
@@ -17,11 +18,12 @@ def get_module_and_tokenizer_by_name(name):
 
 
 class ExperimentModule:
-    def __init__(self, name):
+    def __init__(self, name, method):
         self.name = name
         model, tokenizer = get_module_and_tokenizer_by_name(name)
         self.model = model
         self.tokenizer = tokenizer
+        self.method = method
 
     def get_loss(self, input_ids):
         if self.name.startswith("bigscience/T0"):
@@ -29,7 +31,22 @@ class ExperimentModule:
             outputs = self.model(input_ids=empty_ids, labels=input_ids)
             return outputs.loss
         elif self.name.startswith("facebook/opt"):
-            return self.model(input_ids=input_ids, labels=input_ids).loss
+            if self.method == "perplexity":
+                return self.model(input_ids=input_ids, labels=input_ids).loss
+            else:
+                output = self.model(input_ids=input_ids, output_attentions=True)
+                attentions = output.attentions
+                if self.method == "attn1":
+                    all_layers_all_heads = attentions[-1][0] #FORDOR is this the right one?
+                elif self.method == "attn2":
+                    all_layers_all_heads = sum(attentions)[0]
+                elif self.method == "attn3":
+                    all_layers_all_heads = attentions[0][0]
+                sum_attentions = all_layers_all_heads[:, -1, :].sum(dim=0)
+                first_half = sum_attentions[1:1+(len(sum_attentions)-1)//2]
+                second_half = sum_attentions[1+(len(sum_attentions)-1)//2:]
+            return first_half.sum()/len(first_half) - second_half.sum()/len(second_half)
+
         elif self.name.startswith("t5-"):
             empty_ids = torch.tensor([[self.tokenizer.eos_token_id]]).cuda()
             outputs = self.model(input_ids=empty_ids, labels=input_ids)
