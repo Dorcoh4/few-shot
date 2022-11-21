@@ -26,8 +26,6 @@ prompt_after = ""
 def check_perplex(e_model, dataloader, high_bound, low_bound, all_lows, all_highs):
     # dataloader, tokenizer = accelerator.prepare(dataloader, tokenizer)
     # model = model.to(accelerator.device)
-    random.seed(424242)
-    torch.manual_seed(424242)
     for file in os.listdir(main.output_dir):
         if file.startswith("all_low_"):
             curr_lows = torch.load(f"{main.output_dir}/{file}")
@@ -191,7 +189,7 @@ def main1():
                     all_highs.append(high)
         all_examples = all_lows + all_highs
 
-        e_model = ExperimentModule(main.model_name)
+        e_model = ExperimentModule(args.model_name, args.method)
         e_model.parallelize()
         e_model.model.eval()
 

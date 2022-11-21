@@ -1,3 +1,4 @@
+import random
 import sys
 
 import transformers
@@ -19,16 +20,29 @@ model_name = "bigscience/T0_3B"
 output_dir = "."
 shot = 0
 num_examples = 12000
+method = "perplexity"
 def tokenize_data(dataset, tokenizer):
 
     # the fast tokenizer currently does not work correctly
     # tokenizer.padding_side = "left"
 
     # context_length = 512
+    def random_cut(examples):
+        res = []
+        for example in examples['text']:
+            ex_list = example.split()
+            if len(ex_list) > 1:
+                ex_list = ex_list[0:random.randrange(1, len(ex_list))]
+                res.append(" ".join(ex_list))
 
+            else:
+                print(f"FORDOR234: {example}")
+                res.append(example)
+        return {"text": res}
     def tokenize_function(examples):
         return tokenizer(examples["text"])
 
+    # dataset = dataset.map(random_cut, batched=True)
     tokenized_data = dataset.map(tokenize_function, batched=True)
     # tokenized_data = tokenized_data.remove_columns("text")
     tokenized_data.set_format("torch")
@@ -45,9 +59,9 @@ def print_quantiles(e_model, dataloader):
     print("Going over data.........")
     for batch in dataloader:
         input_ids = batch['input_ids'].cuda()
-
+        if len(input_ids[0]) < 3:
+            continue
         loss = e_model.get_loss(input_ids)
-
 
         losses.append(loss.unsqueeze(0))
         progress_bar.update(1)
@@ -61,6 +75,7 @@ def print_quantiles(e_model, dataloader):
     global output_dir
     for q in q_list:
         torch.save(torch.quantile(res, q), f"{output_dir}/quantile-{q}.pt")
+        print(f"quantile: {q} == {torch.quantile(res, q)}")
     # accelerator.print(f"quantile 0.01  {torch.quantile(res,0.01)}")
     # accelerator.print(f"quantile 0.05  {torch.quantile(res, 0.05)}")
     # accelerator.print(f"quantile 0.1  {torch.quantile(res, 0.1)}")
@@ -104,15 +119,25 @@ def get_args():
                         help="shows output")
     parser.add_argument('--num_examples', dest='num_examples', default=12000,
                         help="shows output")
+    parser.add_argument('--method', dest='method', default="perplexity",
+                        help="shows output")
     args = parser.parse_args()
     global model_name
     global output_dir
     global shot
     global num_examples
+    global method
     shot = int(args.shot)
     num_examples = int(args.num_examples)
     model_name = args.model_name
     output_dir = args.output_dir
+    method = args.method
+
+    from pathlib import Path
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+
+    random.seed(424242)
+    torch.manual_seed(424242)
 
     return args
 
@@ -134,7 +159,7 @@ def main1():
         # perplexity2 = load("perplexity", module_type="measurement")
         # results = perplexity.compute(predictions="we are", model_id=args.model_name, batch_size=1)
         # results2 = perplexity2.compute(data="we are", model_id=args.model_name, batch_size=1)
-        e_model = ExperimentModule(model_name)
+        e_model = ExperimentModule(args.model_name, args.method)
         e_model.parallelize()
         e_model.model.eval()
         dataset = get_data()

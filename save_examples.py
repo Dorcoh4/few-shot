@@ -72,7 +72,7 @@ def save_examples(e_model, dataloader, high_bound, low_bound):
 def main1():
     args = main.get_args()
     with torch.no_grad():
-        e_model = ExperimentModule(main.model_name)
+        e_model = ExperimentModule(args.model_name, args.method)
         e_model.parallelize()
         e_model.model.eval()
         dataset = main.get_data()
