@@ -43,8 +43,8 @@ class ExperimentModule:
                 elif self.method == "attn3":
                     all_layers_all_heads = attentions[0][0]
                 sum_attentions = all_layers_all_heads[:, -1, :].sum(dim=0)
-                first_half = sum_attentions[1:1+(len(sum_attentions)-1)//2]
-                second_half = sum_attentions[1+(len(sum_attentions)-1)//2:]
+                first_half = sum_attentions[1 : 1 + (len(sum_attentions)-1)//2]
+                second_half = sum_attentions[1 + (len(sum_attentions)-1)//2:]
             return first_half.sum()/len(first_half) - second_half.sum()/len(second_half)
 
         elif self.name.startswith("t5-"):
