@@ -1,6 +1,6 @@
 import random
 import sys
-
+import os
 import transformers
 import datasets
 from evaluate import load
@@ -141,6 +141,27 @@ def get_args():
 
     return args
 
+class MyDataset(torch.utils.data.Dataset):
+    def __init__(self, texts):
+        self.texts = texts
+        # self.labels = labels
+
+    def __getitem__(self, idx):
+        item = {key: (torch.tensor(val[idx]) if key != 'text' else val[idx]) for key, val in self.texts.items()}
+        # item['labels'] = torch.tensor(self.labels[idx])
+        return item
+
+    def __len__(self):
+        return len(self.texts['input_ids'])
+
+    def shuffle(self):
+        # c = list(zip(self.texts, self.labels))
+
+        self.texts = random.shuffle(self.texts)
+
+        # a, b = zip(*c)
+
+
 def main1():
     print("starting")
     global model_name
@@ -159,13 +180,31 @@ def main1():
         # perplexity2 = load("perplexity", module_type="measurement")
         # results = perplexity.compute(predictions="we are", model_id=args.model_name, batch_size=1)
         # results2 = perplexity2.compute(data="we are", model_id=args.model_name, batch_size=1)
+        all_data = []
+        # all_highs = []
+        data_dir = args.output_dir + "/../"
+        print ("FORDOR12 " + os.path.abspath(data_dir))
+        for file in os.listdir(data_dir):
+            if file.startswith("data_len_32_"):
+                curr_lows = torch.load(f"{data_dir}/{file}")
+                for ex in curr_lows:
+                    all_data.append(ex)
+
+        # all_examples = all_lows + all_highs
+        print(len(all_data))
         e_model = ExperimentModule(args.model_name, args.method)
         e_model.parallelize()
         e_model.model.eval()
-        dataset = get_data()
-        tokenized_data = tokenize_data(dataset, e_model.tokenizer)
+        tokenized_examples = e_model.tokenizer(all_data)
+        tokenized_examples['text'] = all_data
+        # print("FORDOR")
+
+        # print(len(tokenized_examples))
+        tokenized_data = MyDataset(tokenized_examples)
         dataloader = DataLoader(tokenized_data, shuffle=False, batch_size=1)
         print_quantiles(e_model, dataloader)
+
+
 
 
 if __name__ == '__main__':

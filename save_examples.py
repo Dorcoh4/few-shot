@@ -1,6 +1,7 @@
 import sys
-
+import os
 import main
+from main import MyDataset
 import uuid
 import datasets
 from torch.utils.data import DataLoader
@@ -72,11 +73,23 @@ def save_examples(e_model, dataloader, high_bound, low_bound):
 def main1():
     args = main.get_args()
     with torch.no_grad():
+        all_data = []
+        data_dir = args.output_dir + "/../"
+        for file in os.listdir(data_dir):
+            if file.startswith("data_len_32_"):
+                curr_lows = torch.load(f"{data_dir}/{file}")
+                for ex in curr_lows:
+                    all_data.append(ex)
+
         e_model = ExperimentModule(args.model_name, args.method)
         e_model.parallelize()
         e_model.model.eval()
-        dataset = main.get_data()
-        tokenized_data = main.tokenize_data(dataset, e_model.tokenizer)
+        tokenized_examples = e_model.tokenizer(all_data)
+        tokenized_examples['text'] = all_data
+        # print("FORDOR")
+        print(len(all_data))
+        # print(len(tokenized_examples))
+        tokenized_data = MyDataset(tokenized_examples)
         dataloader = DataLoader(tokenized_data, shuffle=False, batch_size=1)
         q5 = torch.load(f"{main.output_dir}/quantile-0.25.pt")
         q95 = torch.load(f"{main.output_dir}/quantile-0.75.pt")

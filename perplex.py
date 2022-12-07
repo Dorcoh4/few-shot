@@ -3,7 +3,7 @@ import random
 import sys
 
 import main
-
+from main import MyDataset
 import transformers
 import datasets
 from evaluate import load
@@ -139,25 +139,7 @@ def check_perplex(e_model, dataloader, high_bound, low_bound, all_lows, all_high
     print(f"win% = {float(win_cnt) / tot_cnt}, unk% = {float(unk_cnt) / tot_cnt}")
 
 
-class MyDataset(torch.utils.data.Dataset):
-    def __init__(self, texts):
-        self.texts = texts
-        # self.labels = labels
 
-    def __getitem__(self, idx):
-        item = {key: (torch.tensor(val[idx]) if key != 'text' else val[idx]) for key, val in self.texts.items()}
-        # item['labels'] = torch.tensor(self.labels[idx])
-        return item
-
-    def __len__(self):
-        return len(self.texts['input_ids'])
-
-    def shuffle(self):
-        # c = list(zip(self.texts, self.labels))
-
-        self.texts = random.shuffle(self.texts)
-
-        # a, b = zip(*c)
 
 def main1():
     with torch.no_grad():
