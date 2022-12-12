@@ -76,7 +76,7 @@ def main1():
         all_data = []
         data_dir = args.output_dir + "/../"
         for file in os.listdir(data_dir):
-            if file.startswith("data_len_32_"):
+            if file.startswith(args.d_prefix):
                 curr_lows = torch.load(f"{data_dir}/{file}")
                 for ex in curr_lows:
                     all_data.append(ex)
@@ -91,8 +91,8 @@ def main1():
         # print(len(tokenized_examples))
         tokenized_data = MyDataset(tokenized_examples)
         dataloader = DataLoader(tokenized_data, shuffle=False, batch_size=1)
-        q5 = torch.load(f"{main.output_dir}/quantile-0.25.pt")
-        q95 = torch.load(f"{main.output_dir}/quantile-0.75.pt")
+        q5 = torch.load(f"{main.output_dir}/quantile-{args.qlow}.pt")
+        q95 = torch.load(f"{main.output_dir}/quantile-{args.qhigh}.pt")
         print("quantiles:")
         print(q5)
         print(q95)

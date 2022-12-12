@@ -121,6 +121,12 @@ def get_args():
                         help="shows output")
     parser.add_argument('--method', dest='method', default="perplexity",
                         help="shows output")
+    parser.add_argument('--qhigh', dest='qhigh', default="0.95",
+                        help="shows output")
+    parser.add_argument('--qlow', dest='qlow', default="0.05",
+                        help="shows output")
+    parser.add_argument('--d_prefix', dest='d_prefix', default="data_len_16_",
+                        help="shows output")
     args = parser.parse_args()
     global model_name
     global output_dir
@@ -185,7 +191,7 @@ def main1():
         data_dir = args.output_dir + "/../"
         print ("FORDOR12 " + os.path.abspath(data_dir))
         for file in os.listdir(data_dir):
-            if file.startswith("data_len_32_"):
+            if file.startswith(args.d_prefix):
                 curr_lows = torch.load(f"{data_dir}/{file}")
                 for ex in curr_lows:
                     all_data.append(ex)
