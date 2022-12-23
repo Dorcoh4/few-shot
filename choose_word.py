@@ -71,7 +71,7 @@ def choose_word(e_model, dataloader, all_pairs):
             # prompt = craft_prompt(curr_example)
             # prompt_tokens = e_model.tokenizer(in, return_tensors="pt").input_ids.cuda()
             # print("what is this ",prompt_tokens)
-            predicted_token = e_model.get_word(input_ids)
+            # predicted_token = e_model.get_word(input_ids)
             prompt = craft_prompt(curr_example)
             prompt_tokens = e_model.tokenizer(prompt, return_tensors="pt").input_ids.cuda()
             # print("what is this ",prompt_tokens)
@@ -109,9 +109,9 @@ def choose_word(e_model, dataloader, all_pairs):
     print("FINALLY:")
     # print(f"tot : {tot_cnt}, wins : {win_cnt}, unks: {unk_cnt}")
     # print(f"win% = {float(win_cnt) / tot_cnt}, unk% = {float(unk_cnt) / tot_cnt}")
-    print(metrics.classification_report(truths, predictions, digits=4))
-    print("For random:::")
-    print(metrics.classification_report(truths, randoms, digits=4))
+    return metrics.classification_report(truths, predictions, digits=4), metrics.classification_report(truths, randoms, digits=4)
+
+
 
 
 
@@ -159,7 +159,11 @@ def main1():
         # print("quantiles:")
         # print(q5)
         # print(q95)
-        choose_word(e_model, dataloader, all_pairs)
+        report, rand_report = choose_word(e_model, dataloader, all_pairs)
+        with open(f"{args.output_dir}/report_{args.method}_{args.shot}.txt", "w") as text_file:
+            text_file.write(report)
+        with open(f"{args.output_dir}/rand_report_{args.method}_{args.shot}.txt", "w") as text_file:
+            text_file.write(rand_report)
 
 
 if __name__ == '__main__':

@@ -65,8 +65,16 @@ class ExperimentModule:
             all_layers_all_heads = sum(attentions)[0]
         elif self.method == "attn3":
             all_layers_all_heads = attentions[0][0]
+        elif self.method == "rollout":
+            rollout = attentions[0][0]
+            rollout = rollout.type(torch.float32)
+            for l in range(1,len(attentions)):
+                current = attentions[l][0]
+                current = current.type(torch.float32)
+                rollout = torch.matmul(current, rollout)
+            all_layers_all_heads = rollout
         sum_attentions = all_layers_all_heads[:, -1, :].sum(dim=0)
-        return torch.argmax(sum_attentions[4:input_ids[0].tolist().index(50118)]) + 4
+        return torch.argmax(sum_attentions[4:input_ids[0].tolist().index(50118)])
 
     def get_word(self, input_ids):
         output = self.model(input_ids=input_ids, output_attentions=True)
@@ -78,9 +86,11 @@ class ExperimentModule:
         elif self.method == "attn3":
             all_layers_all_heads = attentions[0][0]
         elif self.method == "rollout":
-            for l in range(len(attentions)):
-                current = attentions[l]
-
+            rollout = attentions[0][0]
+            for l in range(1,len(attentions)):
+                current = attentions[l][0]
+                rollout = torch.matmul(current, rollout)
+            all_layers_all_heads = rollout
         sum_attentions = all_layers_all_heads[:, -1, :].sum(dim=0)
         return torch.argmax(sum_attentions[1:])
 
