@@ -73,13 +73,7 @@ def save_examples(e_model, dataloader, high_bound, low_bound):
 def main1():
     args = main.get_args()
     with torch.no_grad():
-        all_data = []
-        data_dir = args.output_dir + "/../"
-        for file in os.listdir(data_dir):
-            if file.startswith(args.d_prefix):
-                curr_lows = torch.load(f"{data_dir}/{file}")
-                for ex in curr_lows:
-                    all_data.append(ex)
+        all_data = main.get_single_data(args)
 
         e_model = ExperimentModule(args.model_name, args.method)
         e_model.parallelize()

@@ -56,6 +56,33 @@ class ExperimentModule:
             outputs = self.model(input_ids=empty_ids, labels=input_ids)
             return outputs.loss
 
+    def get_word_from_slice(self, input_ids):
+        output = self.model(input_ids=input_ids, output_attentions=True)
+        attentions = output.attentions
+        if self.method == "attn1":
+            all_layers_all_heads = attentions[-1][0]  # FORDOR is this the right one?
+        elif self.method == "attn2":
+            all_layers_all_heads = sum(attentions)[0]
+        elif self.method == "attn3":
+            all_layers_all_heads = attentions[0][0]
+        sum_attentions = all_layers_all_heads[:, -1, :].sum(dim=0)
+        return torch.argmax(sum_attentions[4:input_ids[0].tolist().index(50118)]) + 4
+
+    def get_word(self, input_ids):
+        output = self.model(input_ids=input_ids, output_attentions=True)
+        attentions = output.attentions
+        if self.method == "attn1":
+            all_layers_all_heads = attentions[-1][0]  # FORDOR is this the right one?
+        elif self.method == "attn2":
+            all_layers_all_heads = sum(attentions)[0]
+        elif self.method == "attn3":
+            all_layers_all_heads = attentions[0][0]
+        elif self.method == "rollout":
+            for l in range(len(attentions)):
+                current = attentions[l]
+
+        sum_attentions = all_layers_all_heads[:, -1, :].sum(dim=0)
+        return torch.argmax(sum_attentions[1:])
 
     def parallelize(self):
         if self.name.startswith("facebook/opt"): #or  "gpt-neo" in self.name:

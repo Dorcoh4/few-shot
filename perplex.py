@@ -116,6 +116,7 @@ def check_perplex(e_model, dataloader, high_bound, low_bound, all_lows, all_high
             # print("what is this ",prompt_tokens)
             generated_ids = e_model.model.generate(prompt_tokens, max_new_tokens=3)
             generated_text = e_model.get_answer(generated_ids, prompt_tokens)
+            
             # generated_text = tokenizer.batch_decode(generated_ids[:,prompt_tokens.size()[1]:], skip_special_tokens=True)[0]
             lower_text = generated_text.lower().lstrip()
             if lower_text == target or (lower_text.startswith(target) and not lower_text[len(target)].isalnum()): #FORDOR
@@ -158,17 +159,7 @@ def main1():
         if args.low_pp_target is not None:
             low_pp_target = args.low_pp_target
 
-        all_lows = []
-        all_highs = []
-        for file in os.listdir(main.output_dir):
-            if file.startswith("all_low_"):
-                curr_lows = torch.load(f"{main.output_dir}/{file}")
-                for low in curr_lows:
-                    all_lows.append(low)
-            elif file.startswith("all_high_"):
-                curr_highs = torch.load(f"{main.output_dir}/{file}")
-                for high in curr_highs:
-                    all_highs.append(high)
+        all_lows, all_highs = main.get_double_data_w_names(main.output_dir, "all_low_", " all_high_")
         all_examples = all_lows + all_highs
 
         e_model = ExperimentModule(args.model_name, args.method)

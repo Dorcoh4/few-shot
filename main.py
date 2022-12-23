@@ -29,7 +29,7 @@ def tokenize_data(dataset, tokenizer):
     # context_length = 512
     def random_cut(examples):
         res = []
-        for example in examples['text']:
+        for example in examples['sentence']:
             ex_list = example.split()
             if len(ex_list) > 1:
                 ex_list = ex_list[0:random.randrange(1, len(ex_list))]
@@ -40,7 +40,8 @@ def tokenize_data(dataset, tokenizer):
                 res.append(example)
         return {"text": res}
     def tokenize_function(examples):
-        return tokenizer(examples["text"])
+        # print(examples["sentence"])  (please answer simply \"positive\" or \"negative\")
+        return tokenizer([f"Sentence: {sentence}\nQuestion: Does this sentence convey a negative or positive sentiment? Please answer with a single word. \nAnswer:" for sentence in examples["sentence"]])
 
     # dataset = dataset.map(random_cut, batched=True)
     tokenized_data = dataset.map(tokenize_function, batched=True)
@@ -95,6 +96,57 @@ def print_quantiles(e_model, dataloader):
     # accelerator.print(f"quantile 0.99  {torch.quantile(res, 0.99)}")
     # accelerator.print(f"length {res.size()}")
 
+def get_single_data(args):
+    all_data = []
+    data_dir = args.output_dir + "/../"
+    # print("FORDOR12 " + os.path.abspath(data_dir))
+    for file in os.listdir(data_dir):
+        if file.startswith(args.d_prefix):
+            curr_lows = torch.load(f"{data_dir}/{file}")
+            for ex in curr_lows:
+                all_data.append(ex)
+
+    # all_examples = all_lows + all_highs
+    print(len(all_data))
+    return all_data
+
+def get_mixed_data_w_names(dir_name, data_name):
+    res = []
+    for file in os.listdir(dir_name):
+        if file.startswith(data_name):
+            curr_lows = torch.load(f"{dir_name}/{file}")
+            for low in curr_lows:
+                res.append(low)
+    return res
+
+
+def get_double_data(args):
+    all_data = []
+    data_dir = args.output_dir + "/../"
+    # print("FORDOR12 " + os.path.abspath(data_dir))
+    for file in os.listdir(data_dir):
+        if file.startswith(args.d_prefix):
+            curr_lows = torch.load(f"{data_dir}/{file}")
+            for ex in curr_lows:
+                all_data.append(ex)
+
+    # all_examples = all_lows + all_highs
+    print(len(all_data))
+
+def get_double_data_w_names(dir_name, low_name, high_name):
+    all_lows = []
+    all_highs = []
+    for file in os.listdir(dir_name):
+        if file.startswith(low_name):
+            curr_lows = torch.load(f"{dir_name}/{file}")
+            for low in curr_lows:
+                all_lows.append(low)
+        elif file.startswith(high_name):
+            curr_highs = torch.load(f"{dir_name}/{file}")
+            for high in curr_highs:
+                all_highs.append(high)
+    return all_lows, all_highs
+
 def get_data():
     dataset = datasets.load_dataset("bookcorpus", split="train[:20%]").shuffle(seed=1034).select(range(num_examples))
     return dataset
@@ -121,9 +173,9 @@ def get_args():
                         help="shows output")
     parser.add_argument('--method', dest='method', default="perplexity",
                         help="shows output")
-    parser.add_argument('--qhigh', dest='qhigh', default="0.95",
+    parser.add_argument('--qhigh', dest='qhigh', default="0.75",
                         help="shows output")
-    parser.add_argument('--qlow', dest='qlow', default="0.05",
+    parser.add_argument('--qlow', dest='qlow', default="0.25",
                         help="shows output")
     parser.add_argument('--d_prefix', dest='d_prefix', default="data_len_16_",
                         help="shows output")
@@ -147,6 +199,28 @@ def get_args():
 
     return args
 
+class MySplitDataset(torch.utils.data.Dataset):
+    def __init__(self, all_texts, all_labels):
+        self.texts = all_texts
+        self.labels = all_labels
+
+    def __getitem__(self, idx):
+        item = {key: (torch.tensor(val[idx]) if key != 'text' else val[idx]) for key, val in self.texts.items()}
+        item['labels'] = torch.tensor(self.labels[idx])
+        return item
+
+    def __len__(self):
+        return len(self.texts['input_ids'])
+
+    def shuffle(self):
+        c = list(zip(self.texts, self.labels))
+        random.shuffle(c)
+        a, b = zip(*c)
+        self.texts = a
+        self.labels = b
+        # self.texts = random.shuffle(self.texts)
+
+
 class MyDataset(torch.utils.data.Dataset):
     def __init__(self, texts):
         self.texts = texts
@@ -167,7 +241,6 @@ class MyDataset(torch.utils.data.Dataset):
 
         # a, b = zip(*c)
 
-
 def main1():
     print("starting")
     global model_name
@@ -186,18 +259,8 @@ def main1():
         # perplexity2 = load("perplexity", module_type="measurement")
         # results = perplexity.compute(predictions="we are", model_id=args.model_name, batch_size=1)
         # results2 = perplexity2.compute(data="we are", model_id=args.model_name, batch_size=1)
-        all_data = []
         # all_highs = []
-        data_dir = args.output_dir + "/../"
-        print ("FORDOR12 " + os.path.abspath(data_dir))
-        for file in os.listdir(data_dir):
-            if file.startswith(args.d_prefix):
-                curr_lows = torch.load(f"{data_dir}/{file}")
-                for ex in curr_lows:
-                    all_data.append(ex)
-
-        # all_examples = all_lows + all_highs
-        print(len(all_data))
+        get_single_data(args)
         e_model = ExperimentModule(args.model_name, args.method)
         e_model.parallelize()
         e_model.model.eval()
